@@ -20,7 +20,7 @@ O **Oger Dock** reúne lançadores de aplicativos, janelas abertas, pastas perso
 A versão **1.0.0** utiliza como base o comportamento aprovado da R63.7. O principal ambiente de desenvolvimento e testes funcionais foi **openSUSE Tumbleweed com KDE Plasma 6.8.2 e Wayland**. Isso não significa homologação automática para todas as distribuições.
 
 > [!IMPORTANT]
-> O repositório está sendo preparado para a publicação inicial do código-fonte. Os comandos abaixo exigem que a árvore completa do projeto seja publicada; somente o README introdutório não é suficiente. Os downloads serão vinculados após a publicação da release.
+> Este repositório contém a documentação pública. O instalador com o código-fonte completo será publicado em [Releases](https://github.com/dsrsouza/Oger-Dock/releases). Até lá, o repositório por si só ainda não pode ser compilado.
 
 [Recursos](#recursos) · [Capturas de tela](#capturas-de-tela) · [Instalação](#instalação) · [Compatibilidade](#compatibilidade) · [Testes](#testes-e-qualidade) · [Suporte](#suporte-e-comunidade) · [Licença](#licença)
 
