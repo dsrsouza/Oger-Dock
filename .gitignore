@@ -1,0 +1,27 @@
+# Local CMake and KDE build products
+/build/
+/build-*/
+/dist/
+/.cmake/
+/CMakeFiles/
+/CMakeCache.txt
+/Testing/
+*.o
+*.so
+*.so.*
+*.a
+
+# Local editors / artifacts
+.vscode/
+.idea/
+*.swp
+*~
+__pycache__/
+*.pyc
+
+# Local analysis and release staging
+/.cache/
+/tmp/
+*.log
+
+# Keep source and release metadata versioned

@@ -1,0 +1,54 @@
+name: Bug report
+description: Report a reproducible problem in Oger Dock
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: "Please remove private information from logs and screenshots."
+  - type: input
+    id: version
+    attributes:
+      label: Oger Dock version
+      placeholder: "1.0.0"
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Distribution, KDE Plasma and Qt versions
+      placeholder: "openSUSE Tumbleweed · Plasma 6.8.2 · Qt 6.x"
+    validations:
+      required: true
+  - type: dropdown
+    id: session
+    attributes:
+      label: Desktop session
+      options:
+        - Wayland
+        - X11
+        - Other / unknown
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      placeholder: "1. ... 2. ... 3. ..."
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: observed
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs (optional; remove private information)
+      render: shell

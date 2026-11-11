@@ -1,15 +1,17 @@
-# Oger Dock 1.0.0 — capturas oficiais
+# Oger Dock screenshots / Capturas oficiais
 
-Use somente capturas **reais** do Oger Dock em uma sessão KDE Plasma, sem reaproveitar imagens de outros projetos. Evite dados pessoais.
+The README currently shows a **concept illustration**, explicitly marked as such. It is not a real application screenshot.
 
-| Arquivo sugerido | O que mostrar |
+Capture actual Oger Dock 1.0.0 running in KDE Plasma, avoiding user names, personal windows, notifications and private file paths.
+
+| Planned file | Capture |
 |---|---|
-| `docs/images/oger-dock-main.png` | Dock inferior com aplicativos |
-| `docs/images/oger-dock-folders.png` | Pastas abertas em leque |
-| `docs/images/oger-dock-menu.png` | OgerMenu Normal |
-| `docs/images/oger-dock-reduced-menu.png` | OgerMenu Reduzido |
-| `docs/images/oger-dock-player.png` | Mini player e expansão de detalhes |
-| `docs/images/oger-dock-settings.png` | Configurações de Itens, Pastas ou Aparência |
-| `docs/images/oger-dock-side.png` | Dock na lateral da tela |
+| `Images/oger-dock-bottom.png` | Bottom dock and running-app indicators |
+| `Images/oger-dock-side.png` | Left or right dock |
+| `Images/oger-menu-normal.png` | Normal application menu |
+| `Images/oger-menu-reduced.png` | Reduced application menu |
+| `Images/oger-dock-fan.png` | Fan folder |
+| `Images/oger-dock-player.png` | MPRIS mini player and expanded track information |
+| `Images/oger-dock-settings.png` | Settings with folder colors and customization |
 
-Quando as capturas forem publicadas, adicionaremos uma imagem principal abaixo da introdução e uma galeria nos READMEs português e inglês. Nenhuma imagem demonstrativa artificial é apresentada como captura real.
+After screenshots are uploaded, add a focused gallery to both README languages. Do not use screenshots from other dock projects as evidence of the Oger Dock interface.

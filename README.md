@@ -1,84 +1,71 @@
 # Oger Dock
 
+<p align="center"><img src="Images/oger-dock-presentation.svg" width="920" alt="Oger Dock concept illustration showing the dock, application menu and media player"></p>
 <p align="center">
-  <strong>A customizable dock for KDE Plasma 6</strong>
+  <a href="https://github.com/dsrsouza/Oger-Dock/releases"><img src="https://img.shields.io/badge/version-1.0.0-f59e54" alt="Version 1.0.0"></a>
+  <img src="https://img.shields.io/badge/KDE_Plasma-6-1d99f3?logo=kde" alt="KDE Plasma 6">
+  <img src="https://img.shields.io/badge/Linux-Wayland-informational?logo=linux" alt="Linux Wayland">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0--or--later-blue" alt="GPL-3.0-or-later"></a>
 </p>
 
-<p align="center">
-  <img alt="Version 1.0.0" src="https://img.shields.io/badge/version-1.0.0-3b82f6">
-  <img alt="KDE Plasma 6" src="https://img.shields.io/badge/KDE_Plasma-6-1d99f3?logo=kde">
-  <img alt="Linux" src="https://img.shields.io/badge/platform-Linux-555555?logo=linux">
-  <img alt="GPL-3.0-or-later" src="https://img.shields.io/badge/license-GPL--3.0--or--later-blue">
-</p>
+<p align="center"><strong>Application launchers · Live windows · Fan folders · MPRIS media controls · Native KDE integration</strong></p>
+<p align="center"><a href="README.md">English</a> | <a href="README.pt_BR.md">Português (Brasil)</a></p>
 
-<p align="center">
-  <a href="README.md">English</a> · <a href="README.pt_BR.md">Português (Brasil)</a>
-</p>
+**Oger Dock** brings a smooth, configurable application dock to **KDE Plasma 6**. It combines shortcuts, window switching, interactive folders, a compact media player and desktop utilities in a cohesive experience. Designed and tested primarily with **openSUSE Tumbleweed, KDE Plasma 6.8.2 and Wayland**, version **1.0.0** continues the R63.7 functional baseline.
 
-Oger Dock brings application launchers, running windows, customizable folders, media controls and everyday desktop tools into a single, fluid dock built for **KDE Plasma 6**. It is designed for users who want a personalized desktop without losing integration with KDE applications and services.
+> [!IMPORTANT]
+> The project source is being prepared for import into this repository. Until the import workflow completes, the clone contains documentation only. A source-based ZIP/TAR.GZ installer (not a universal precompiled `.plasmoid`) will be available under [Releases](https://github.com/dsrsouza/Oger-Dock/releases).
 
-The **1.0.0** release is based on the project's validated R63.7 behavior. Development and initial functional testing have focused on **openSUSE Tumbleweed, KDE Plasma 6.8.2 and Wayland**. This does not imply certification on all Plasma 6 installations.
-
- > [!IMPORTANT]
-> This repository currently contains the public documentation. The complete source installer will be published under [Releases](https://github.com/dsrsouza/Oger-Dock/releases); until then, the checkout alone cannot be compiled.
-
-[Features](#features) · [Screenshots](#screenshots) · [Installation](#installation) · [Compatibility](#compatibility) · [Testing](#testing-and-quality) · [Support](#support-and-community) · [License](#license)
+[Features](#features) · [Gallery](#gallery) · [Installation](#installation) · [Compatibility](#compatibility) · [Testing](#testing-and-quality) · [Community](#community-and-support) · [License](#license)
 
 ## Features
 
 ### Applications and windows
+- **Launchers and favorites:** keep frequently used apps pinned and organize shortcuts.
+- **Mouse-wheel switching:** move sequentially between eligible open apps, honoring direction and stopping at the ends instead of skipping.
+- **Running-app indicators:** visual state for open and focused windows.
+- **Reorder items:** unlock the dock to rearrange application icons and folders.
 
-- **Custom launchers and pinned apps:** keep commonly used applications at hand and organize dock items according to your workflow.
-- **Window switching with the mouse wheel:** cycle sequentially through eligible open applications, respecting scroll direction and list boundaries.
-- **Window-aware indicators:** distinguish running applications and their active state with configurable visual cues.
-- **Reordering:** unlock the dock when you want to rearrange launchers and other items.
+### Fan folders and collections
+- **Animated fan folders:** open collections without interrupting the dock layout.
+- **Per-folder colors:** set names and independent accents or use category/theme defaults.
+- **Application picker:** find installed apps by name or category and add multiple items to collections.
 
-### System tray integration
+### OgerMenu
+- **Normal and Reduced modes:** choose the presentation that matches your workspace.
+- **Search and categories:** find installed applications without opening another launcher.
+- **KDE session actions:** shutdown, restart and logout through KDE-supported operations.
 
-- **StatusNotifierItem (SNI) integration:** reuse existing compatible tray applications and their native menus when those menus are provided by the application.
-- **Existing-instance behavior:** restore a recognized running app without starting unnecessary duplicate processes.
-- **Autostart protection:** applications that launch automatically with the desktop are not automatically added as dock items just because they publish an SNI.
-- **Protected scrolling:** scrolling across dock applications does not inadvertently promote tray-only programs such as MEGAsync to dock entries (R63.7 validation).
-- **Return to tray:** supported temporary entries can be removed from the dock while their application continues to run.
+### Media and desktop tools
+- **MPRIS mini player:** artwork, previous, play/pause and next for active compatible players.
+- **Expanding track details:** reveal title and artist without shifting fixed playback controls.
+- **Trash:** open in Dolphin, empty with confirmation, and access common actions.
 
-Some tray behaviors depend on what KDE's task manager and the third-party application's SNI actually expose.
+### Appearance, tray and interactions
+- **Positions:** bottom (default), left or right; top placement is intentionally unavailable.
+- **KDE look and feel:** configurable appearance, smooth animation and running indicators.
+- **SNI/DBusMenu support:** compatible tray apps can expose their real menus and reuse existing processes.
+- **Startup-aware behavior:** tray-only autostart apps do not gain a dock entry solely by registering an SNI.
+- **R63.7 scroll fix:** prevents unintended activation or promotion of tray-only apps such as MEGAsync when using the dock's wheel navigation.
 
-### Folders and application organization
+Tray behavior depends on the application's exported SNI and the windows recognized by KDE; not every third-party popup can be managed by the dock.
 
-- **Fan-style folders:** open organized collections in a fluid fan presentation.
-- **Personalized folders:** choose folder names and individual colors, or inherit category/theme defaults.
-- **Application picker:** find installed KDE applications by search and category, with multi-selection when building collections.
-- **Drag and drop:** organize applications and folders with direct manipulation.
+## Gallery
 
-### Application menu
+<p align="center"><img src="Images/oger-dock-presentation.svg" width="840" alt="Concept illustration of the Oger Dock application menu, dock and media panel"></p>
+<p align="center"><em>Concept illustration, not a capture of a running application.</em></p>
 
-- **Normal and Reduced layouts:** choose the menu size that fits your desktop.
-- **Application search and categories:** quickly locate installed programs.
-- **Session controls:** access supported KDE shutdown, restart and logout actions.
-
-### Media and desktop utilities
-
-- **Compact MPRIS player:** artwork and previous/play-pause/next controls for compatible active media sources.
-- **Expandable track information:** track details appear without enlarging or shifting the dock's fixed player controls.
-- **Trash integration:** open Trash in Dolphin, empty it and confirm destructive actions.
-- **Visual appearance:** Plasma-friendly theme integration, folder colors, indicators and animations.
-- **Dock placement:** bottom, left or right side of the screen; top placement is intentionally not offered.
-
-## Screenshots
-
-Real Oger Dock screenshots will be added to `docs/images/` before the visual gallery is published. Planned captures include the horizontal dock, side dock, Normal/Reduced menu, fan folders, compact player and Settings. Images from other dock projects are not Oger Dock screenshots.
-
-See the [screenshot checklist](docs/SCREENSHOTS.md) for recommended captures and filenames.
+Real screenshots are being collected for the bottom and side dock, the Normal/Reduced menus, fan folders, player and settings. The [screenshot guide](docs/SCREENSHOTS.md) documents the expected images; no images from another dock are presented as Oger Dock captures.
 
 ## Installation
 
-### Download a release
+### GitHub release — source installer
 
-Once the first public release is uploaded, find its packages under [GitHub Releases](https://github.com/dsrsouza/Oger-Dock/releases). Extract the installer archive and use the included `scripts-user/setup.sh` script from the project root.
+Download the ZIP or TAR.GZ from [Releases](https://github.com/dsrsouza/Oger-Dock/releases), extract the archive, and run the included installer **inside the extracted project folder**. A C++/Qt6/KF6 build takes place on your machine; this is **not** a universal binary package.
 
-### Build and install from source
+### Build from source
 
-After the complete source tree is published here, open a terminal:
+Once the repository's full source import is complete:
 
 ```bash
 git clone https://github.com/dsrsouza/Oger-Dock.git
@@ -88,64 +75,61 @@ bash scripts-user/setup.sh --build-only -j 2
 bash scripts-user/setup.sh --install --no-restart -j 2
 ```
 
-Use the normal desktop account, not root, for the build/install script. After installation, add **Oger Dock** from KDE Plasma's **Add Widgets** interface. A logout/login may be needed to reload an updated native module. Do not delete your existing dock settings when upgrading.
+Run the commands as your regular desktop user. Then add **Oger Dock** from KDE Plasma's **Add Widgets** menu; log out and back in when required to reload the native module. **Do not remove existing configuration when updating.**
 
-For distribution-specific dependency commands and troubleshooting, read the [installation guide](docs/INSTALLATION.md) or [guia de instalação em português](docs/INSTALACAO.pt_BR.md).
+For distro dependencies and troubleshooting, use the [English installation guide](docs/INSTALLATION.md) or [Brazilian Portuguese guide](docs/INSTALACAO.pt_BR.md).
 
 ## Compatibility
 
-| Environment | Project status |
+| Platform | Status |
 |---|---|
-| openSUSE Tumbleweed + KDE Plasma 6.8.2 + Wayland | Main development and user-testing environment |
-| Other KDE Plasma 6.8+ environments | Intended targets; verify dependencies and native compatibility |
-| Fedora with KDE Plasma 6 | Installation guide provided; end-to-end validation pending |
-| Debian/Ubuntu with KDE Plasma 6 | Installation guide provided; end-to-end validation pending |
-| Non-KDE desktops | Not supported |
+| openSUSE Tumbleweed / KDE Plasma 6.8.2 / Wayland | Primary development and user-test environment |
+| Other Linux distributions with compatible KDE Plasma 6 | Targeted, but requires native build and testing |
+| Fedora KDE | Installation instructions available; release validation pending |
+| Debian / Ubuntu KDE | Installation instructions available; release validation pending |
+| Desktops without KDE Plasma | Unsupported |
 
-The native components depend on the Qt and KDE libraries of the host system. A Plasma or Qt upgrade may require rebuilding and reinstalling the applet.
-
-**Existing installations:** the internal technical applet identifier `org.kde.plasma.punchi-dock-remastered` is retained for settings and upgrade continuity. The public project name is **Oger Dock**.
+The **public name** is Oger Dock. The technical Plasma applet ID `org.kde.plasma.punchi-dock-remastered` remains unchanged for settings and update compatibility. Native modules may need rebuilding following KDE/Qt library updates.
 
 ## Testing and quality
 
-The 1.0.0 preparation included automated regression and installation-script checks. Prior checks reported **11/11 targeted tests** and **13/13 script checks** passing. These checks do not replace native compilation, visual review and full end-to-end testing in every target distribution.
+The 1.0.0 release preparation reported **11/11 targeted regression checks** and **13/13 shell syntax checks** passing. These are offline checks, **not** proof of a native build or end-to-end certification on every distribution. In the R63.7 baseline, the fix preventing MEGA's unintended activation during scroll was confirmed by the maintainer in KDE Plasma.
 
-One specifically user-confirmed behavior is the R63.7 correction that prevents scrolling from inadvertently activating/promoting the MEGA tray application. Other features should be validated against the actual installed release.
+Details: [Release notes](docs/RELEASE-1.0.0.md) · [Architecture](docs/ARCHITECTURE.md) · [FAQ](docs/FAQ.md).
 
-When reporting a problem, include the distribution, Plasma version, Qt version, session type (Wayland/X11), steps to reproduce and relevant logs.
+## Community and support
 
-## Support and community
+- **Questions, help and ideas:** [GitHub Discussions](https://github.com/dsrsouza/Oger-Dock/discussions) *(must be enabled in repository settings)*.
+- **Bug reports and feature requests:** [GitHub Issues](https://github.com/dsrsouza/Oger-Dock/issues).
+- **Contributions:** [Contributing guide](CONTRIBUTING.md) and [security policy](SECURITY.md).
 
-- **Questions and discussions:** [GitHub Discussions](https://github.com/dsrsouza/Oger-Dock/discussions) (repository Discussions must be enabled).
-- **Bugs and feature requests:** [GitHub Issues](https://github.com/dsrsouza/Oger-Dock/issues).
-- **Community:** [r/OgerDock on Reddit](https://www.reddit.com/r/OgerDock/).
+When reporting an issue, include the distribution, KDE Plasma and Qt versions, Wayland/X11, installation method, reproduction steps and logs without private data.
 
-Contributions to bug reports, documentation, translations and testing are welcome. Please keep technical reports reproducible and avoid posting personal information in logs.
-
-## Project structure
-
-The source layout is expected to include the following project areas when the full source is published:
+<details><summary>Project source structure</summary>
 
 ```text
-contents/       QML interface, JavaScript, icons and configuration
-src/            native integration (C++)
-scripts-user/   installation, build and dependency checks
-tests-dev/      regression tests and development validations
-metadata.json   KDE Plasma applet metadata
-AGENTS.md       AI-agent development guidance
+contents/       QML UI, JavaScript logic, images, configuration
+src/            native C++ components
+scripts-user/   dependency checks, build, packaging and installation
+tests-dev/      targeted regression tests
+po/             translations
+metadata.json   Plasma applet metadata
+AGENTS.md       development notes and AI guidance
 ```
 
-The installer and archive layout should be reviewed against the exact final release before publishing these paths as a definitive inventory.
+</details>
 
 ### AI-assisted development
 
-AI-based tools supported investigation, implementation proposals, refactoring, testing and documentation during development. Technical review, functional decisions and final release validation remain the responsibility of the project maintainers. Development instructions and historical notes are kept with the source/release documentation where available.
+AI tools were used to support research, coding, regression analysis, tests and documentation. Maintainers are responsible for reviewing changes and validating behavior. The release history and agent guidance document the work; automated results do not replace hands-on testing.
 
 ## Credits
 
 **Diego Souza.R**  
 **Punchisoft**
 
+Oger Dock is based on [Punchi Dock Remastered](https://github.com/PunchiSoft/punchi-dock-remastered), developed by **PunchiSoft**. Original source-file notices and attribution obligations remain applicable; see [NOTICE](NOTICE).
+
 ## License
 
-Oger Dock is distributed under the **GNU General Public License v3.0 or later (GPL-3.0-or-later)**. The full license text and all applicable third-party copyright/attribution notices must accompany the published source and distribution packages. See the [GPL-3.0 license](https://www.gnu.org/licenses/gpl-3.0.html).
+Distributed under the [GNU General Public License v3.0 or later](LICENSE). See [NOTICE](NOTICE) and the original source notices. Preserve attribution and provide corresponding source code when distributing GPL-covered binaries.
