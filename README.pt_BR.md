@@ -1,6 +1,6 @@
-# Oger Dock
-
-<p align="center"><img src="Images/oger-dock-presentation.svg" width="920" alt="Oger Dock concept illustration showing the dock, application menu and media player"></p>
+<p align="center"><img src="Images/oger-logo.png" width="152" alt="Logotipo oficial Oger Dock com mascote ogro"></p>
+<h1 align="center">Oger Dock</h1>
+<p align="center"><strong>Seu KDE Plasma, do seu jeito.</strong></p>
 <p align="center">
   <a href="https://github.com/dsrsouza/Oger-Dock/releases"><img src="https://img.shields.io/badge/version-1.0.0-f59e54" alt="Version 1.0.0"></a>
   <img src="https://img.shields.io/badge/KDE_Plasma-6-1d99f3?logo=kde" alt="KDE Plasma 6">
@@ -17,6 +17,8 @@ O **Oger Dock** é uma dock fluida e personalizável para o **KDE Plasma 6**, qu
 > O código-fonte completo está em preparação para importação neste repositório. Até a conclusão do processo, o clone contém somente documentação. O instalador ZIP/TAR.GZ que será publicado em [Releases](https://github.com/dsrsouza/Oger-Dock/releases) compila o plasmoide no computador do usuário — não é um binário `.plasmoid` universal.
 
 [Recursos](#recursos) · [Galeria](#galeria) · [Instalação](#instalação) · [Compatibilidade](#compatibilidade) · [Testes](#testes-e-qualidade) · [Comunidade](#comunidade-e-suporte) · [Licença](#licença)
+
+<p align="center"><img src="Images/oger-brand-cover.svg" width="920" alt="Identidade visual oficial Oger Dock em verde-oliva, cobre e grafite"></p>
 
 ## Recursos
 
@@ -52,10 +54,7 @@ A integração depende das informações efetivamente fornecidas pelo aplicativo
 
 ## Galeria
 
-<p align="center"><img src="Images/oger-dock-presentation.svg" width="840" alt="Ilustração conceitual da dock, menu de aplicativos e mini player"></p>
-<p align="center"><em>Ilustração conceitual — não é uma captura de tela do aplicativo em execução.</em></p>
-
-As capturas reais da dock inferior e lateral, menus Normal/Reduzido, pastas, player e configurações serão acrescentadas à galeria. O [guia de capturas](docs/SCREENSHOTS.md) especifica os arquivos esperados. Não utilizaremos imagens de outros projetos como se fossem do Oger Dock.
+A galeria será preenchida com capturas reais da dock inferior e lateral, menus Normal/Reduzido, pastas, player e configurações. O [guia de capturas](docs/SCREENSHOTS.md) especifica os arquivos esperados. Não utilizaremos imagens de outros projetos como se fossem do Oger Dock.
 
 ## Instalação
 

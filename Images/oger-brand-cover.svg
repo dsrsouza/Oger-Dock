@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 360" role="img" aria-label="Oger Dock — KDE Plasma dock, olive green and bronze brand">
+<defs>
+  <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#101717"/><stop offset=".58" stop-color="#1c2621"/><stop offset="1" stop-color="#302723"/></linearGradient>
+  <linearGradient id="metal" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f1d8a4"/><stop offset=".48" stop-color="#c88a57"/><stop offset="1" stop-color="#9b5a3c"/></linearGradient>
+  <linearGradient id="forest" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#86915b"/><stop offset="1" stop-color="#4b603f"/></linearGradient>
+</defs>
+<rect width="1200" height="360" rx="22" fill="url(#bg)"/>
+<path d="M0 282C240 220 360 397 660 286s430 10 540-87V360H0Z" fill="#84935a" opacity=".11"/>
+<path d="M0 260C240 204 390 377 673 259s407 11 527-97" fill="none" stroke="#a98c58" stroke-width="2" opacity=".4"/>
+<g opacity=".13" stroke="#d6c095" stroke-width="2"><path d="M1000-30l300 300M940-30l300 300M880-30l300 300M820-30l300 300"/></g>
+<g transform="translate(75 62)">
+<rect x="0" y="0" width="7" height="229" rx="3.5" fill="url(#metal)"/>
+<text x="31" y="94" font-family="DejaVu Sans,Arial,sans-serif" font-weight="800" font-size="87" letter-spacing="3" fill="#f4e2bf">OGER</text>
+<text x="34" y="177" font-family="DejaVu Sans,Arial,sans-serif" font-size="83" font-weight="800" letter-spacing="10" fill="url(#metal)">DOCK</text>
+<text x="35" y="216" font-family="DejaVu Sans,Arial,sans-serif" font-size="17" fill="#b6c4b4">A personalized desktop experience for KDE Plasma 6</text>
+</g>
+<g transform="translate(727 47)" fill="none" stroke-linejoin="round">
+<rect x="6" y="5" width="415" height="256" rx="34" fill="#0e1515" stroke="#af895c" stroke-opacity=".4" stroke-width="2"/>
+<rect x="27" y="28" width="373" height="211" rx="23" fill="#26332b" stroke="#a9ac7c" stroke-opacity=".42"/>
+<g transform="translate(59 74)">
+<rect width="61" height="61" rx="17" fill="url(#forest)" stroke="#b2ae83" stroke-width="2"/><path d="M15 34l13-17 19 17-19 12Z" fill="#dbd7aa" opacity=".8"/>
+<rect x="76" width="61" height="61" rx="17" fill="#704b3a" stroke="#bd8657" stroke-width="2"/><path d="M95 18h24v24H95z" fill="#e8c092" opacity=".85"/>
+<rect x="152" width="61" height="61" rx="17" fill="#355c51" stroke="#8cae8c" stroke-width="2"/><circle cx="183" cy="30" r="17" stroke="#d8e4bd" stroke-width="3"/>
+<rect x="228" width="61" height="61" rx="17" fill="#64423d" stroke="#d5966a" stroke-width="2"/><path d="M244 31h25" stroke="#ebc29a" stroke-width="5"/><path d="M259 18v26" stroke="#ebc29a" stroke-width="5"/>
+</g>
+<path d="M56 163h316" stroke="#769076" stroke-width="1.5" opacity=".7"/>
+<rect x="66" y="180" width="275" height="8" rx="4" fill="#7a8a6d"/>
+<rect x="66" y="199" width="193" height="8" rx="4" fill="#a68c61"/>
+</g>
+<text x="1126" y="329" text-anchor="end" font-family="DejaVu Sans,Arial,sans-serif" font-size="13" fill="#d4b48a">OGER DOCK · 1.0.0</text>
+</svg>

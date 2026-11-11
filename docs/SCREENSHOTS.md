@@ -1,6 +1,6 @@
 # Oger Dock screenshots / Capturas oficiais
 
-The README currently shows a **concept illustration**, explicitly marked as such. It is not a real application screenshot.
+The README uses the **official Oger Dock mascot and brand cover**, not a screenshot. Only genuine KDE Plasma captures should be added to the gallery.
 
 Capture actual Oger Dock 1.0.0 running in KDE Plasma, avoiding user names, personal windows, notifications and private file paths.
 

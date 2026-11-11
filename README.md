@@ -1,6 +1,6 @@
-# Oger Dock
-
-<p align="center"><img src="Images/oger-dock-presentation.svg" width="920" alt="Oger Dock concept illustration showing the dock, application menu and media player"></p>
+<p align="center"><img src="Images/oger-logo.png" width="152" alt="Official Oger Dock orc mascot logo"></p>
+<h1 align="center">Oger Dock</h1>
+<p align="center"><strong>Make KDE Plasma your own.</strong></p>
 <p align="center">
   <a href="https://github.com/dsrsouza/Oger-Dock/releases"><img src="https://img.shields.io/badge/version-1.0.0-f59e54" alt="Version 1.0.0"></a>
   <img src="https://img.shields.io/badge/KDE_Plasma-6-1d99f3?logo=kde" alt="KDE Plasma 6">
@@ -17,6 +17,8 @@
 > The project source is being prepared for import into this repository. Until the import workflow completes, the clone contains documentation only. A source-based ZIP/TAR.GZ installer (not a universal precompiled `.plasmoid`) will be available under [Releases](https://github.com/dsrsouza/Oger-Dock/releases).
 
 [Features](#features) · [Gallery](#gallery) · [Installation](#installation) · [Compatibility](#compatibility) · [Testing](#testing-and-quality) · [Community](#community-and-support) · [License](#license)
+
+<p align="center"><img src="Images/oger-brand-cover.svg" width="920" alt="Oger Dock official visual identity in olive green, bronze and deep graphite"></p>
 
 ## Features
 
@@ -52,10 +54,7 @@ Tray behavior depends on the application's exported SNI and the windows recogniz
 
 ## Gallery
 
-<p align="center"><img src="Images/oger-dock-presentation.svg" width="840" alt="Concept illustration of the Oger Dock application menu, dock and media panel"></p>
-<p align="center"><em>Concept illustration, not a capture of a running application.</em></p>
-
-Real screenshots are being collected for the bottom and side dock, the Normal/Reduced menus, fan folders, player and settings. The [screenshot guide](docs/SCREENSHOTS.md) documents the expected images; no images from another dock are presented as Oger Dock captures.
+Real screenshots are reserved for this gallery for the bottom and side dock, the Normal/Reduced menus, fan folders, player and settings. The [screenshot guide](docs/SCREENSHOTS.md) documents the expected images; no images from another dock are presented as Oger Dock captures.
 
 ## Installation
 
