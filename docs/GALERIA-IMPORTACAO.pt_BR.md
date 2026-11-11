@@ -1,12 +1,22 @@
-# Galeria de recursos — publicação
+# Galeria visual do Oger Dock 1.0.0
 
-Os oito arquivos de demonstração foram preparados com uma área de trabalho de exemplo, preservando os detalhes visuais principais do Oger Dock e ocultando arquivos pessoais.
+Os dois READMEs apresentam **oito pôsteres ilustrativos** em destaque, um para cada recurso. Eles são arquivos `SVG` versionados na pasta [`Images/posters/`](../Images/posters).
 
-Para publicar as imagens e adicioná-las automaticamente aos dois READMEs:
+## Recursos ilustrados
 
-1. Baixe `Oger-Dock-Galeria-README-8-Recursos.zip` desta conversa.
-2. Abra https://github.com/dsrsouza/Oger-Dock/upload/main .
-3. Envie o ZIP **sem extrair**, na raiz de `main`, preservando o nome exato, e confirme o commit.
-4. Confira https://github.com/dsrsouza/Oger-Dock/actions . A ação **Publish Oger Dock feature gallery** confere SHA-256 de cada uma das 8 imagens, extrai para `Images/features/`, atualiza ambos os READMEs e remove o ZIP da aba Code.
+1. OgerMenu — pesquisa, categorias, aplicativos e controles de sessão.
+2. Pastas em leque — acesso a aplicativos agrupados.
+3. Dolphin — acesso a diretórios.
+4. Menus nativos SNI/DBusMenu — integração com aplicativos compatíveis.
+5. Lixeira — visualização de itens e comandos de gerenciamento.
+6. Mini player MPRIS — capa, música e controles de reprodução.
+7. Menu de contexto da dock — organização, personalização e configuração.
+8. Painel de configurações — itens, aparência, pastas, menus, áudio e atalhos.
 
-Estas imagens são **demonstrações editadas**, não capturas originais inalteradas. Elas não devem ser utilizadas como prova de testes em outras distribuições.
+**Importante:** são pôsteres vetoriais de demonstração. Os elementos foram reconstruídos como ilustrações; eles não são capturas de tela inalteradas nem comprovam execução em outras distribuições.
+
+## Atualização futura
+
+Para trocar os pôsteres por capturas reais editadas para privacidade, publique os arquivos de imagem no repositório antes de atualizar as referências nos READMEs. Não publique nomes de arquivos pessoais, janelas privadas ou notificações.
+
+A antiga automação que dependia do envio de um ZIP para a galeria foi desativada porque os pôsteres já estão presentes no repositório. Não é necessário enviar nenhum ZIP para visualizar esta versão.
