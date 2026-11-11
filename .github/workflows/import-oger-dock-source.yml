@@ -1,39 +1,57 @@
-name: Import Oger Dock 1.0.0 source installer
+name: Import and release Oger Dock 1.0.0 source
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
     paths:
       - Oger-Dock-1.0.0-Instalador-Publicacao.zip
 
 permissions:
   contents: write
 
+concurrency:
+  group: oger-dock-source-import
+  cancel-in-progress: false
+
 jobs:
-  import-source:
-    name: Verify archive and publish source tree
+  publish:
+    name: Verify, import source, and publish v1.0.0
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
+      - name: Check out current main branch
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Validate and unpack approved 1.0.0 source archive
+
+      - name: Verify source archive and import 355 files
         shell: bash
         run: |
           set -euo pipefail
-          archive=Oger-Dock-1.0.0-Instalador-Publicacao.zip
-          expected=553b6561ffb3e8dec06b98fa415371e550b2a7c7236c8717fcad3be5e2383a96
-          printf '%s  %s\n' "$expected" "$archive" | sha256sum --check -
+          archive="Oger-Dock-1.0.0-Instalador-Publicacao.zip"
+          expected="553b6561ffb3e8dec06b98fa415371e550b2a7c7236c8717fcad3be5e2383a96"
+          printf '%s  %s\n' "$expected" "$archive" | sha256sum -c -
+          cp -- "$archive" "$RUNNER_TEMP/$archive"
           mkdir -p "$RUNNER_TEMP/oger-source"
           unzip -q "$archive" -d "$RUNNER_TEMP/oger-source"
           source_dir="$RUNNER_TEMP/oger-source/Oger-Dock-1.0.0-Instalador"
-          test -f "$source_dir/CMakeLists.txt"
-          test -f "$source_dir/scripts-user/setup.sh"
-          test -f "$source_dir/NOTICE"
-          test -f "$source_dir/LICENSE"
-          # Preserve the richer bilingual project pages already committed to GitHub.
+
+          for required in CMakeLists.txt metadata.json scripts-user/setup.sh LICENSE NOTICE; do
+            test -f "$source_dir/$required"
+          done
+
+          python3 - "$source_dir" <<'PY'
+          import json, sys
+          from pathlib import Path
+          path=Path(sys.argv[1])
+          md=json.loads((path/'metadata.json').read_text())
+          assert md['KPlugin']['Name']=='Oger Dock'
+          assert md['KPlugin']['Version']=='1.0.0'
+          assert md['KPlugin']['Id']=='org.kde.plasma.punchi-dock-remastered'
+          print('Archive identity verified: Oger Dock 1.0.0')
+          PY
+
+          # Public presentation and community files were reviewed separately.
+          # Do not overwrite the README, license and current release documentation.
           rsync -a \
             --exclude='/.git/' \
             --exclude='/.github/' \
@@ -41,31 +59,40 @@ jobs:
             --exclude='/README.pt_BR.md' \
             --exclude='/NOTICE' \
             --exclude='/LICENSE' \
+            --exclude='/CHANGELOG.md' \
             --exclude='/docs/INSTALLATION.md' \
             --exclude='/docs/INSTALACAO.pt_BR.md' \
             --exclude='/docs/SCREENSHOTS.md' \
             --exclude='/docs/RELEASE-1.0.0.md' \
+            --exclude='/docs/ARCHITECTURE.md' \
+            --exclude='/docs/FAQ.md' \
+            --exclude='/docs/PUBLICACAO.pt_BR.md' \
             --exclude='/CONTRIBUTING.md' \
             "$source_dir/" ./
           rm -- "$archive"
+
+          # Replace the provisional README notice only after the source import.
           python3 - <<'PY'
           from pathlib import Path
-          p = Path('README.md')
-          s = p.read_text(encoding='utf-8')
-          s = s.replace(
-              'This repository currently contains the public documentation. The complete source installer will be published under [Releases](https://github.com/dsrsouza/Oger-Dock/releases); until then, the checkout alone cannot be compiled.',
-              'The source tree is available in this repository. Source installer archives are also distributed through [Releases](https://github.com/dsrsouza/Oger-Dock/releases); they compile a native Plasma applet on your system, not a universal prebuilt binary.'
-          )
-          p.write_text(s, encoding='utf-8')
-          p = Path('README.pt_BR.md')
-          s = p.read_text(encoding='utf-8')
-          s = s.replace(
-              'Este repositório contém a documentação pública. O instalador com o código-fonte completo será publicado em [Releases](https://github.com/dsrsouza/Oger-Dock/releases). Até lá, o repositório por si só ainda não pode ser compilado.',
-              'O código-fonte completo está disponível neste repositório. Os instaladores em código-fonte também serão distribuídos em [Releases](https://github.com/dsrsouza/Oger-Dock/releases); eles compilam o plasmoide nativo localmente, não fornecem um binário universal.'
-          )
-          p.write_text(s, encoding='utf-8')
+          changes={
+           'README.md':(
+            'The project source is being prepared for import into this repository. Until the import workflow completes, the clone contains documentation only. A source-based ZIP/TAR.GZ installer (not a universal precompiled `.plasmoid`) will be available under [Releases](https://github.com/dsrsouza/Oger-Dock/releases).',
+            'The full source tree is published in this repository. ZIP/TAR.GZ installers are offered under [Releases](https://github.com/dsrsouza/Oger-Dock/releases). These archives build the native Plasma applet locally rather than distributing a universal precompiled `.plasmoid`.'
+           ),
+           'README.pt_BR.md':(
+            'O código-fonte completo está em preparação para importação neste repositório. Até a conclusão do processo, o clone contém somente documentação. O instalador ZIP/TAR.GZ que será publicado em [Releases](https://github.com/dsrsouza/Oger-Dock/releases) compila o plasmoide no computador do usuário — não é um binário `.plasmoid` universal.',
+            'O código-fonte completo está publicado neste repositório. Os instaladores ZIP/TAR.GZ estão disponíveis em [Releases](https://github.com/dsrsouza/Oger-Dock/releases) e compilam o plasmoide no computador do usuário, sem exigir um pacote universal pré-compilado.'
+           )
+          }
+          for filename,(before,after) in changes.items():
+            path=Path(filename)
+            text=path.read_text(encoding='utf-8')
+            if before not in text:
+              raise SystemExit(f'Required README status marker absent: {filename}')
+            path.write_text(text.replace(before,after),encoding='utf-8')
           PY
-      - name: Commit verified source and remove ZIP from Code
+
+      - name: Commit source tree on main
         shell: bash
         run: |
           set -euo pipefail
@@ -73,8 +100,41 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
           if git diff --cached --quiet; then
-            echo 'No changes to publish.'
-            exit 0
+            echo 'No source changes detected.'
+          else
+            git commit -m "release: import verified Oger Dock 1.0.0 source tree"
+            git push origin HEAD:main
           fi
-          git commit -m "release: import verified Oger Dock 1.0.0 source tree"
-          git push origin HEAD:main
+
+      - name: Create v1.0.0 tag and source-based release archives
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git ls-remote --tags origin refs/tags/v1.0.0 | grep -q refs/tags/v1.0.0; then
+            echo "::error::The v1.0.0 tag already exists. Verify it before publishing to avoid an incorrect release."
+            exit 1
+          fi
+          git tag -a v1.0.0 -m "Oger Dock 1.0.0 — R63.7 functional baseline"
+          git push origin v1.0.0
+          (
+            cd "$RUNNER_TEMP/oger-source"
+            tar -czf "$RUNNER_TEMP/Oger-Dock-1.0.0-Instalador-Publicacao.tar.gz" Oger-Dock-1.0.0-Instalador
+          )
+          cd "$RUNNER_TEMP"
+          sha256sum Oger-Dock-1.0.0-Instalador-Publicacao.zip Oger-Dock-1.0.0-Instalador-Publicacao.tar.gz > Oger-Dock-1.0.0-Instalador-Publicacao-SHA256.txt
+
+      - name: Publish GitHub Release with installable source archives
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh release create v1.0.0 \
+            "$RUNNER_TEMP/Oger-Dock-1.0.0-Instalador-Publicacao.zip" \
+            "$RUNNER_TEMP/Oger-Dock-1.0.0-Instalador-Publicacao.tar.gz" \
+            "$RUNNER_TEMP/Oger-Dock-1.0.0-Instalador-Publicacao-SHA256.txt" \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "Oger Dock 1.0.0" \
+            --notes-file docs/RELEASE-1.0.0.md \
+            --verify-tag \
+            --latest
