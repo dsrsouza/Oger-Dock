@@ -54,22 +54,57 @@ A integração depende das informações efetivamente fornecidas pelo aplicativo
 
 ## Galeria
 
-### Demonstrações dos recursos
+### Recursos em destaque
 
-As oito imagens de apresentação já foram preparadas com uma área de trabalho fictícia e nomes de arquivos genéricos. Elas serão exibidas automaticamente aqui após a importação do ZIP verificado. As capturas originais que mostravam arquivos pessoais **não serão publicadas**.
+> **Pôsteres de demonstração:** as artes abaixo representam visualmente os recursos do Oger Dock e utilizam elementos de interface reconstruídos para proteger dados pessoais. Não são capturas de tela inalteradas.
 
-| Recurso | O que a demonstração apresenta |
-|---|---|
-| **OgerMenu** | Busca de aplicativos, categorias, grade de ícones e ações de sessão do KDE |
-| **Pastas em leque** | Grupos de atalhos abertos com animação em leque |
-| **Integração com Dolphin** | Abertura de diretórios pelo gerenciador de arquivos do KDE |
-| **Menus nativos da bandeja** | Ações SNI/DBusMenu oferecidas por aplicativos compatíveis |
-| **Popup da lixeira** | Lista de arquivos, esvaziamento com confirmação e abertura no Dolphin |
-| **Mini player integrado** | Controles MPRIS, capa e informações da música |
-| **Menu de contexto da dock** | Destravar, inserir separadores, tema e configurações |
-| **Painel de configurações** | Organizar ícones, pastas, menus, áudio, janelas e atalhos |
+### 1. OgerMenu
 
-[Como publicar a galeria](docs/GALERIA-IMPORTACAO.pt_BR.md) · [Orientações para capturas](docs/SCREENSHOTS.md)
+<p align="center"><img src="Images/posters/ogermenu.svg" width="100%" alt="OgerMenu — Oger Dock"></p>
+
+Menu principal com pesquisa, categorias, grade de aplicativos e ações de sessão.
+
+### 2. Pastas em leque
+
+<p align="center"><img src="Images/posters/fan-folders.svg" width="100%" alt="Pastas em leque — Oger Dock"></p>
+
+Agrupe aplicativos em coleções que se abrem em leque animado.
+
+### 3. Integração com Dolphin
+
+<p align="center"><img src="Images/posters/dolphin.svg" width="100%" alt="Integração com Dolphin — Oger Dock"></p>
+
+Abra pastas e diretórios diretamente no gerenciador de arquivos do KDE.
+
+### 4. Menus nativos da bandeja
+
+<p align="center"><img src="Images/posters/native-tray-menu.svg" width="100%" alt="Menus nativos da bandeja — Oger Dock"></p>
+
+Acesse o menu SNI/DBusMenu oferecido por aplicativos compatíveis.
+
+### 5. Lixeira integrada
+
+<p align="center"><img src="Images/posters/trash-popup.svg" width="100%" alt="Lixeira integrada — Oger Dock"></p>
+
+Visualize arquivos na lixeira e use as ações Esvaziar e Abrir no Dolphin.
+
+### 6. Mini player MPRIS
+
+<p align="center"><img src="Images/posters/mini-player.svg" width="100%" alt="Mini player MPRIS — Oger Dock"></p>
+
+Controle a reprodução e visualize capa, artista e música sem deslocar os ícones.
+
+### 7. Menu de contexto
+
+<p align="center"><img src="Images/posters/context-menu.svg" width="100%" alt="Menu de contexto — Oger Dock"></p>
+
+Destrave a dock, adicione separadores, altere o tema e abra configurações.
+
+### 8. Painel de configurações
+
+<p align="center"><img src="Images/posters/settings.svg" width="100%" alt="Painel de configurações — Oger Dock"></p>
+
+Personalize ícones, pastas, aparência, menus, áudio, janelas e atalhos.
 
 ## Instalação
 

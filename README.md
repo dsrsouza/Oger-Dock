@@ -54,22 +54,57 @@ Tray behavior depends on the application's exported SNI and the windows recogniz
 
 ## Gallery
 
-### Feature demonstrations
+### Feature posters
 
-The following eight features have privacy-edited presentation images prepared. The images will appear here automatically once the verified gallery archive is imported. The originals containing personal desktop data are not published.
+> **Promotional demonstrations:** the images below illustrate Oger Dock's features using reconstructed desktop elements to protect personal data. They are not unedited screenshots.
 
-| Feature | What it demonstrates |
-|---|---|
-| **OgerMenu** | Application search, categories, app grid, and KDE session actions |
-| **Animated fan folders** | Organized collections of shortcuts opening in a fan |
-| **Dolphin integration** | Open folders from the dock in KDE's file manager |
-| **Native tray menus** | Access SNI/DBusMenu actions exported by compatible applications |
-| **Trash popup** | Review deleted items, empty with confirmation, or open in Dolphin |
-| **Mini player** | MPRIS playback controls, album cover, and track information |
-| **Dock context menu** | Unlocking, separators, appearance, and configuration |
-| **Settings panel** | Managing icons, folders, menus, audio, windows, and shortcuts |
+### 1. APPLICATION MENU
 
-[Gallery publication instructions](docs/GALERIA-IMPORTACAO.pt_BR.md) · [Screenshot guidelines](docs/SCREENSHOTS.md)
+<p align="center"><img src="Images/posters/ogermenu.svg" width="100%" alt="APPLICATION MENU — Oger Dock"></p>
+
+Search installed apps, browse categories and access KDE session actions.
+
+### 2. FAN FOLDERS
+
+<p align="center"><img src="Images/posters/fan-folders.svg" width="100%" alt="FAN FOLDERS — Oger Dock"></p>
+
+Create themed collections with animated fan-style access to your shortcuts.
+
+### 3. DOLPHIN INTEGRATION
+
+<p align="center"><img src="Images/posters/dolphin.svg" width="100%" alt="DOLPHIN INTEGRATION — Oger Dock"></p>
+
+Launch directories directly through KDE's Dolphin file manager.
+
+### 4. NATIVE TRAY MENUS
+
+<p align="center"><img src="Images/posters/native-tray-menu.svg" width="100%" alt="NATIVE TRAY MENUS — Oger Dock"></p>
+
+Access native SNI/DBusMenu options exposed by compatible applications.
+
+### 5. TRASH POPUP
+
+<p align="center"><img src="Images/posters/trash-popup.svg" width="100%" alt="TRASH POPUP — Oger Dock"></p>
+
+Inspect deleted items and empty the trash or open it in Dolphin.
+
+### 6. MPRIS MINI PLAYER
+
+<p align="center"><img src="Images/posters/mini-player.svg" width="100%" alt="MPRIS MINI PLAYER — Oger Dock"></p>
+
+Control compatible players and see cover art and track details.
+
+### 7. DOCK CONTEXT MENU
+
+<p align="center"><img src="Images/posters/context-menu.svg" width="100%" alt="DOCK CONTEXT MENU — Oger Dock"></p>
+
+Unlock and customize the dock, add separators and open settings.
+
+### 8. SETTINGS PANEL
+
+<p align="center"><img src="Images/posters/settings.svg" width="100%" alt="SETTINGS PANEL — Oger Dock"></p>
+
+Manage launchers, folders, appearance, menus, media, windows and shortcuts.
 
 ## Installation
 
