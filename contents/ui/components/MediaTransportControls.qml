@@ -1,0 +1,152 @@
+import QtQuick
+import QtQuick.Layouts
+import org.kde.plasma.components as PlasmaComponents
+import org.kde.kirigami as Kirigami
+
+// Plasma provides the translation functions in the applet context.
+// qmllint disable unqualified
+RowLayout {
+    id: root
+
+    property var controller: null
+    property bool lightAppearance: false
+    property bool prominentPlayButton: false
+    readonly property bool available: !!controller && controller.available
+    readonly property color controlColor: lightAppearance
+        ? Qt.rgba(1, 1, 1, 0.96)
+        : Kirigami.Theme.textColor
+
+    spacing: Kirigami.Units.smallSpacing
+
+    function focusFirstControl() {
+        if (shuffleButton.enabled) {
+            shuffleButton.forceActiveFocus(Qt.TabFocusReason)
+            return true
+        }
+        if (previousButton.enabled) {
+            previousButton.forceActiveFocus(Qt.TabFocusReason)
+            return true
+        }
+        if (playPauseButton.enabled) {
+            playPauseButton.forceActiveFocus(Qt.TabFocusReason)
+            return true
+        }
+        if (nextButton.enabled) {
+            nextButton.forceActiveFocus(Qt.TabFocusReason)
+            return true
+        }
+        return false
+    }
+
+    Item {
+        Layout.fillWidth: true
+    }
+
+    PlasmaComponents.ToolButton {
+        id: shuffleButton
+        Layout.preferredWidth: root.prominentPlayButton ? 36 : implicitWidth
+        Layout.preferredHeight: root.prominentPlayButton ? 36 : implicitHeight
+        text: i18nc("@action:button", "Shuffle")
+        display: PlasmaComponents.AbstractButton.IconOnly
+        icon.name: "media-playlist-shuffle"
+        icon.color: root.controlColor
+        checkable: true
+        checked: root.available && root.controller.shuffle
+        enabled: root.available
+            && root.controller.canControl
+            && root.controller.shuffleAvailable
+        Accessible.name: text
+        Accessible.role: Accessible.Button
+        Accessible.checked: checked
+        onClicked: root.controller.setShuffle(!root.controller.shuffle)
+    }
+
+    PlasmaComponents.ToolButton {
+        id: previousButton
+        Layout.preferredWidth: root.prominentPlayButton ? 36 : implicitWidth
+        Layout.preferredHeight: root.prominentPlayButton ? 36 : implicitHeight
+        text: i18nc("@action:button", "Previous track")
+        display: PlasmaComponents.AbstractButton.IconOnly
+        icon.name: Application.layoutDirection === Qt.RightToLeft
+            ? "media-skip-forward"
+            : "media-skip-backward"
+        icon.color: root.controlColor
+        enabled: root.available && root.controller.canGoPrevious
+        onClicked: root.controller.previous()
+    }
+
+    PlasmaComponents.ToolButton {
+        id: playPauseButton
+        Layout.preferredWidth: root.prominentPlayButton ? 52 : implicitWidth
+        Layout.preferredHeight: root.prominentPlayButton ? 52 : implicitHeight
+        text: root.controller && root.controller.playing
+            ? i18nc("@action:button", "Pause")
+            : i18nc("@action:button", "Play")
+        display: PlasmaComponents.AbstractButton.IconOnly
+        icon.name: root.controller && root.controller.playing
+            ? "media-playback-pause"
+            : "media-playback-start"
+        icon.color: root.prominentPlayButton
+            ? Kirigami.Theme.highlightedTextColor
+            : root.controlColor
+        enabled: root.available && ((root.controller.playing && root.controller.canPause)
+            || (!root.controller.playing && root.controller.canPlay))
+        onClicked: root.controller.togglePlaying()
+
+        background: Rectangle {
+            visible: root.prominentPlayButton
+            radius: width / 2
+            color: playPauseButton.pressed
+                ? Qt.darker(Kirigami.Theme.highlightColor, 1.18)
+                : (playPauseButton.hovered || playPauseButton.activeFocus
+                    ? Qt.lighter(Kirigami.Theme.highlightColor, 1.08)
+                    : Kirigami.Theme.highlightColor)
+            border.width: playPauseButton.activeFocus ? 2 : 0
+            border.color: Kirigami.Theme.textColor
+        }
+    }
+
+    PlasmaComponents.ToolButton {
+        id: nextButton
+        Layout.preferredWidth: root.prominentPlayButton ? 36 : implicitWidth
+        Layout.preferredHeight: root.prominentPlayButton ? 36 : implicitHeight
+        text: i18nc("@action:button", "Next track")
+        display: PlasmaComponents.AbstractButton.IconOnly
+        icon.name: Application.layoutDirection === Qt.RightToLeft
+            ? "media-skip-backward"
+            : "media-skip-forward"
+        icon.color: root.controlColor
+        enabled: root.available && root.controller.canGoNext
+        onClicked: root.controller.next()
+    }
+
+    PlasmaComponents.ToolButton {
+        id: repeatButton
+        Layout.preferredWidth: root.prominentPlayButton ? 36 : implicitWidth
+        Layout.preferredHeight: root.prominentPlayButton ? 36 : implicitHeight
+        text: root.available && root.controller.loopStatus === "Track"
+            ? i18nc("@action:button", "Repeat track")
+            : i18nc("@action:button", "Repeat")
+        display: PlasmaComponents.AbstractButton.IconOnly
+        icon.name: root.available && root.controller.loopStatus === "Track"
+            ? "media-playlist-repeat-song"
+            : "media-playlist-repeat"
+        icon.color: root.controlColor
+        checkable: true
+        checked: root.available
+            && root.controller.loopStatus.length > 0
+            && root.controller.loopStatus !== "None"
+        enabled: root.available
+            && root.controller.canControl
+            && root.controller.loopStatus.length > 0
+        Accessible.name: text
+        Accessible.role: Accessible.Button
+        Accessible.checked: checked
+        onClicked: root.controller.cycleLoopStatus()
+    }
+
+    Item {
+        Layout.fillWidth: true
+    }
+}
+// qmllint enable unqualified

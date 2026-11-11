@@ -1,0 +1,1136 @@
+import QtQuick
+
+Item {
+    id: root
+
+    width: 0
+    height: 0
+    visible: false
+
+    property bool inPanel: false
+    property int panelPopupDirection: Qt.TopEdge
+    property rect availableScreenRect: Qt.rect(0, 0, 800, 640)
+    property var geometryStateRef: null
+    property int popupDirection: panelPopupDirection
+    property var dockFallbackAnchor: null
+    property var taskStructureSource: null
+    property var taskControllerRef: null
+    property var mprisControllerRef: null
+    property var trashIntegrationRef: null
+    property var trashContextContentRef: null
+    property var notePopupContentRef: null
+    property var taskWindowsPopupContentRef: null
+    property var taskPopupSurfaceRef: null
+    property var taskPopupAnimatedContentRef: null
+    property var stableTaskPopupAnchorRef: null
+
+    property var folderPopupDialogRef: null
+    property var folderPopupAnimatedContentRef: null
+    // R51: only a click opens the first folder. Once a folder is visible,
+    // dwelling on another persistent folder switches through a closing/opening
+    // animation in the SAME popup, without two simultaneous windows.
+    property var pendingHoverFolderData: null
+    property var pendingHoverFolderAnchor: null
+    property bool pendingHoverFolderForced: false
+    property bool folderHoverSwitchInProgress: false
+    readonly property int folderHoverDwellMs: 150
+    Timer {
+        id: folderHoverSwitchTimer
+        interval: root.folderHoverDwellMs
+        repeat: false
+        onTriggered: root.beginFolderHoverSwitch()
+    }
+
+    function hoverFolderStillEligible() {
+        const anchor = root.pendingHoverFolderAnchor
+        const data = root.pendingHoverFolderData
+        const popup = root.folderPopupDialogRef
+        return !!(popup && popup.visible && anchor && data
+            && data.type === "folder"
+            && popup.sourceAnchor !== anchor
+            && !root.contextMenuVisible
+            && !anchor.persistentReorderActive
+            && (root.pendingHoverFolderForced || anchor.pointerOverDockItem))
+    }
+
+    function requestFolderHoverSwitch(itemData, anchor, force) {
+        if (!root.folderPopupDialogRef || !root.folderPopupDialogRef.visible
+                || !itemData || itemData.type !== "folder" || !anchor
+                || root.folderPopupDialogRef.sourceAnchor === anchor
+                || root.contextMenuVisible || anchor.persistentReorderActive) {
+            return false
+        }
+        root.pendingHoverFolderData = itemData
+        root.pendingHoverFolderAnchor = anchor
+        root.pendingHoverFolderForced = !!force
+        if (root.folderHoverSwitchInProgress) {
+            // The latest hovered folder wins when moving across several icons.
+            return true
+        }
+        if (force) root.beginFolderHoverSwitch()
+        else folderHoverSwitchTimer.restart()
+        return true
+    }
+
+    function cancelFolderHoverSwitch(anchor) {
+        if (anchor && root.pendingHoverFolderAnchor !== anchor) return
+        if (root.pendingHoverFolderForced && anchor) return
+        folderHoverSwitchTimer.stop()
+        root.pendingHoverFolderData = null
+        root.pendingHoverFolderAnchor = null
+        root.pendingHoverFolderForced = false
+        // When already closing, completion restores the previous folder.
+    }
+
+    function abortFolderHoverSwitch() {
+        // A popup closed by a click, deactivation or a different dialog must
+        // never leave a stale closing transition that blocks later hovers.
+        root.cancelFolderHoverSwitch()
+        root.folderHoverSwitchInProgress = false
+    }
+
+    function beginFolderHoverSwitch() {
+        folderHoverSwitchTimer.stop()
+        if (root.folderHoverSwitchInProgress || !root.hoverFolderStillEligible()) {
+            if (!root.folderHoverSwitchInProgress) root.cancelFolderHoverSwitch()
+            return
+        }
+        root.folderHoverSwitchInProgress = true
+        // Hold R45 task-presentation callbacks BEFORE changing the popup
+        // geometry. The hold is automatically released after the new reveal.
+        root.folderPopupOpening(root.pendingHoverFolderData)
+        const animation = root.folderPopupAnimatedContentRef
+        if (animation && typeof animation.beginClosing === "function")
+            animation.beginClosing()
+        else root.finishFolderHoverSwitch()
+    }
+
+    function finishFolderHoverSwitch() {
+        if (!root.folderHoverSwitchInProgress) return
+        const valid = root.hoverFolderStillEligible()
+        const data = root.pendingHoverFolderData
+        const anchor = root.pendingHoverFolderAnchor
+        root.folderHoverSwitchInProgress = false
+        root.cancelFolderHoverSwitch()
+        if (valid) {
+            root.activeFolderData = data
+            root.activeFolderModelIndex = Number.isInteger(Number(anchor.index))
+                ? Number(anchor.index) : -1
+            root.assignPopupAnchor(root.folderPopupDialogRef,
+                root.preparePopupAnchor(anchor))
+        }
+        // If the candidate left while closing, reveal the old folder again.
+        // No hide/show, no second popup and no abrupt zero-opacity frame.
+        const animation = root.folderPopupAnimatedContentRef
+        if (root.folderPopupDialogRef && root.folderPopupDialogRef.visible
+                && animation && typeof animation.scheduleOpening === "function")
+            animation.scheduleOpening()
+    }
+
+    property var calendarPopupDialogRef: null
+    property var trashMenuDialogRef: null
+    property var trashDockContentsDialogRef: null
+    property var notePopupDialogRef: null
+    property var appActionsDialogRef: null
+    property var taskWindowsDialogRef: null
+    property var taskOverflowDialogRef: null
+    property var punchiMenuDialogRef: null
+
+    property var applicationIdentityResolver: null
+    property var contextActionsResolver: null
+
+    property var activeFolderData: ({})
+    // Emitted synchronously BEFORE the window/dialog is mapped, giving task
+    // presentation a pre-open fence instead of the late R44 visible fence.
+    signal folderPopupOpening(var itemData)
+    property int activeFolderModelIndex: -1
+    property var folderItemsControllerRef: null
+    Connections {
+        target: root.folderItemsControllerRef
+        function onConfigurationChanged() {
+            if (root.activeFolderModelIndex < 0) { return }
+            const item = root.folderItemsControllerRef.dockItems[root.activeFolderModelIndex]
+            if (item && item.type === "folder") {
+                root.activeFolderData = item
+            } else {
+                root.activeFolderModelIndex = -1
+                root.hidePopupDialog(root.folderPopupDialogRef)
+            }
+        }
+    }
+    property var activeCalendarData: ({})
+    property var activeNoteData: ({})
+    property int activeNoteIndex: -1
+    property var activeTaskPopupData: ({ "name": "", "windows": [] })
+    property var activeAppContextMenuData: ({ "name": "", "actions": [], "maxVisibleRows": 0 })
+    property string activeTrashEmptySound: ""
+    property string pendingTaskPopupAppName: ""
+    property var pendingTaskPopupRows: []
+    property var taskPopupVisualParent: null
+    property bool taskPopupUsesStableAnchor: false
+    // Delegates expose taskPopupAnchorItem beyond the base Item interface.
+    property var pendingDynamicTaskPopupOwner: null
+    property var pendingDynamicTaskPopupRows: []
+    property rect pendingDynamicTaskPopupGeometry: Qt.rect(0, 0, 0, 0)
+    property int pendingDynamicTaskPopupStableSamples: 0
+    property int pendingDynamicTaskPopupRestoreAttempts: 0
+    property int maximumDynamicTaskPopupRestoreAttempts: 12
+    property bool taskPopupHovered: false
+    property bool contextMenuOpening: false
+    property string mediaHoverMode: "card"
+    property bool mediaHoverEnabled: mediaHoverMode !== "none"
+    readonly property bool mediaReplacementMode:
+        mediaHoverMode === "card" || mediaHoverMode === "fullCard"
+    property bool windowPreviewsEnabled: true
+    property string activeTaskPopupPresentation: "none"
+    readonly property bool mediaHoverActive:
+        taskPresentationPolicy.isReplacement(activeTaskPopupPresentation)
+    property bool pendingTaskPopupKeyboardInvoked: false
+    property bool pendingTaskPopupPreviewFallback: true
+    property bool pendingTaskPopupRequestValid: false
+    property bool pendingTaskPopupAwaitingMediaResolution: false
+
+    readonly property bool contextMenuVisible: contextMenuOpening
+        || (appActionsDialogRef && appActionsDialogRef.visible)
+        || (trashMenuDialogRef && trashMenuDialogRef.visible)
+            || (taskWindowsPopupContentRef && taskWindowsPopupContentRef.actionsVisible)
+
+    TaskPopupPresentationController {
+        id: taskPresentationPolicy
+        mediaEnabled: root.mediaHoverEnabled
+        mediaMode: root.mediaHoverMode
+        mediaControllerRef: root.mprisControllerRef
+    }
+
+    readonly property bool isAnyPopupActiveGlobally: {
+        return (folderPopupDialogRef && folderPopupDialogRef.visible)
+            || (calendarPopupDialogRef && calendarPopupDialogRef.visible)
+            || (trashMenuDialogRef && trashMenuDialogRef.visible)
+            || (trashDockContentsDialogRef && trashDockContentsDialogRef.visible)
+            || (notePopupDialogRef && notePopupDialogRef.visible)
+            || (appActionsDialogRef && appActionsDialogRef.visible)
+            || (taskWindowsDialogRef && taskWindowsDialogRef.visible)
+            || (taskOverflowDialogRef && taskOverflowDialogRef.visible)
+            || (punchiMenuDialogRef && punchiMenuDialogRef.visible)
+            || contextMenuOpening
+    }
+
+    onWindowPreviewsEnabledChanged: {
+        if (windowPreviewsEnabled) {
+            return
+        }
+        pendingTaskPopupPreviewFallback = false
+        taskPopupOpenTimer.stop()
+        if ((activeTaskPopupPresentation === "preview"
+                || activeTaskPopupPresentation === "overlay")
+                && root.popupDialogActive(taskWindowsDialogRef)) {
+            hideTaskWindowsDialog()
+            resetTaskPopupState()
+        }
+    }
+
+    Timer {
+        id: taskPopupOpenTimer
+        interval: 280
+        repeat: false
+        onTriggered: {
+            if (!root.contextMenuVisible
+                    && root.taskPopupVisualParent
+                    && root.pendingTaskPopupRows.length > 0) {
+                root.openTaskWindowsPopup(root.pendingTaskPopupAppName,
+                    root.pendingTaskPopupRows, root.taskPopupVisualParent,
+                    root.pendingTaskPopupKeyboardInvoked,
+                    root.pendingTaskPopupPreviewFallback)
+            }
+        }
+    }
+
+    Timer {
+        id: taskPopupCloseTimer
+        interval: 260
+        repeat: false
+        onTriggered: {
+            if (root.taskWindowsDialogRef
+                    && !root.taskPopupHovered
+                    && !root.taskPopupSourceContainsMouse()) {
+                root.closeTaskWindowsPopup(true)
+            }
+        }
+    }
+
+    Timer {
+        id: dynamicTaskPopupOwnerRestoreTimer
+        interval: 16
+        repeat: false
+        onTriggered: root.continueDynamicTaskPopupOwnerRestore()
+    }
+
+    Timer {
+        id: mediaAvailabilityFallbackTimer
+        interval: 180
+        repeat: false
+        onTriggered: {
+            if (!root.mediaHoverActive || !root.mprisControllerRef
+                    || root.mprisControllerRef.available
+                    || root.mprisControllerRef.resolving) {
+                return
+            }
+            const activeApplicationId = String(
+                root.activeTaskPopupData.applicationId || "")
+            const requestedApplicationId = String(
+                root.mprisControllerRef.applicationId || "")
+            if (activeApplicationId.length > 0
+                    && requestedApplicationId.length > 0
+                    && activeApplicationId !== requestedApplicationId) {
+                return
+            }
+            const previewAvailable = root.windowPreviewsEnabled
+                && root.pendingTaskPopupPreviewFallback
+                && (root.activeTaskPopupData.windows || []).length > 0
+            root.activeTaskPopupPresentation = previewAvailable
+                ? "preview"
+                : "none"
+            if (previewAvailable) {
+                root.taskWindowsPopupContentRef.showPreviews()
+            } else if (root.taskWindowsDialogRef) {
+                root.hideTaskWindowsDialog()
+            }
+        }
+    }
+
+    Connections {
+        target: root.taskStructureSource
+        function onTaskStructureChanged() {
+            root.refreshTaskPopupAfterStructureChange()
+        }
+    }
+
+    Connections {
+        target: root.mprisControllerRef
+
+        function onResolvingChanged() {
+            if (root.mprisControllerRef.resolving) {
+                mediaAvailabilityFallbackTimer.stop()
+                return
+            }
+            root.resumePendingTaskPopupAfterMediaResolution()
+            if (root.mediaHoverActive
+                    && !root.mprisControllerRef.available) {
+                mediaAvailabilityFallbackTimer.restart()
+            }
+        }
+
+        function onStateChanged() {
+            if (root.mprisControllerRef.resolving) {
+                mediaAvailabilityFallbackTimer.stop()
+                return
+            }
+            if (!root.mediaHoverActive) {
+                root.resumePendingTaskPopupAfterMediaResolution()
+                mediaAvailabilityFallbackTimer.stop()
+                return
+            }
+            if (root.mprisControllerRef.available) {
+                mediaAvailabilityFallbackTimer.stop()
+                return
+            }
+            mediaAvailabilityFallbackTimer.restart()
+        }
+    }
+
+    function surfaceAvailable(surface, name) {
+        if (surface) {
+            return true
+        }
+        console.warn("Oger Dock: popup surface unavailable:", name)
+        return false
+    }
+
+    function showTaskWindowsDialog() {
+        if (root.popupDialogActive(root.taskWindowsDialogRef)) {
+            return true
+        }
+        return root.showPopupDialog(root.taskWindowsDialogRef)
+    }
+
+    function hideTaskWindowsDialog() {
+        root.hidePopupDialog(root.taskWindowsDialogRef)
+    }
+
+    function popupDialogActive(dialog) {
+        return !!(dialog && (dialog.visible || dialog.preparingToShow))
+    }
+
+    function showPopupDialog(dialog) {
+        if (!dialog) {
+            return false
+        }
+        if (typeof dialog.openSafely === "function") {
+            dialog.openSafely()
+        } else {
+            dialog.visible = true
+        }
+        return true
+    }
+
+    function hidePopupDialog(dialog) {
+        if (!dialog) {
+            return
+        }
+        if (typeof dialog.closeSafely === "function") {
+            dialog.closeSafely()
+        } else {
+            dialog.visible = false
+        }
+    }
+
+    function popupAnchor(visualParent) {
+        return visualParent || dockFallbackAnchor
+    }
+
+    function taskPopupAnchor(visualParent) {
+        if (visualParent && visualParent.taskPopupAnchorItem) {
+            if (stableTaskPopupAnchorRef
+                    && typeof stableTaskPopupAnchorRef.capture === "function"
+                    && stableTaskPopupAnchorRef.capture(
+                        visualParent.taskPopupAnchorItem)) {
+                return stableTaskPopupAnchorRef
+            }
+            return visualParent.taskPopupAnchorItem
+        }
+        return popupAnchor(visualParent)
+    }
+
+    function popupDirectionForAnchor(anchor) {
+        if (inPanel || !anchor) {
+            return panelPopupDirection
+        }
+
+        try {
+            const anchorPoint = Qt.point(Math.max(0, Number(anchor.width || 0)) / 2,
+                Math.max(0, Number(anchor.height || 0)) / 2)
+            const center = typeof anchor.mapToGlobal === "function"
+                ? anchor.mapToGlobal(anchorPoint)
+                : anchor.mapToScene(anchorPoint)
+            const centerX = center.x
+            const centerY = center.y
+            const screen = availableScreenRect
+            const distances = [
+                { "direction": Qt.BottomEdge,
+                    "distance": Math.abs(centerY - screen.y) },
+                { "direction": Qt.TopEdge,
+                    "distance": Math.abs((screen.y + screen.height) - centerY) },
+                { "direction": Qt.RightEdge,
+                    "distance": Math.abs(centerX - screen.x) },
+                { "direction": Qt.LeftEdge,
+                    "distance": Math.abs((screen.x + screen.width) - centerX) }
+            ]
+            let nearest = distances[0]
+            for (let index = 1; index < distances.length; index++) {
+                if (distances[index].distance < nearest.distance) {
+                    nearest = distances[index]
+                }
+            }
+            return nearest.direction
+        } catch (error) {
+            return panelPopupDirection
+        }
+    }
+
+    function preparePopupAnchor(visualParent) {
+        const anchor = popupAnchor(visualParent)
+        if (!inPanel && geometryStateRef
+                && typeof geometryStateRef.updateFloatingScreenEdge === "function") {
+            geometryStateRef.updateFloatingScreenEdge(anchor)
+        }
+        popupDirection = popupDirectionForAnchor(anchor)
+        return anchor
+    }
+
+    function assignPopupAnchor(dialog, anchor) {
+        if (!dialog) {
+            return
+        }
+        if (typeof dialog.setPopupAnchor === "function") {
+            dialog.setPopupAnchor(anchor)
+            return
+        }
+        dialog.visualParent = anchor
+        if (typeof dialog.placementAnchor !== "undefined") {
+            dialog.placementAnchor = anchor
+        }
+    }
+
+    function closeAllPopups(exceptDialog) {
+        if (exceptDialog !== root.folderPopupDialogRef)
+            root.cancelFolderHoverSwitch()
+        const dialogs = [folderPopupDialogRef, calendarPopupDialogRef, trashMenuDialogRef,
+            trashDockContentsDialogRef, notePopupDialogRef, appActionsDialogRef,
+            taskOverflowDialogRef, taskWindowsDialogRef]
+        for (let index = 0; index < dialogs.length; index++) {
+            const dialog = dialogs[index]
+            if (dialog && dialog !== exceptDialog) {
+                root.hidePopupDialog(dialog)
+            }
+        }
+        if (exceptDialog !== taskWindowsDialogRef) {
+            taskPopupOpenTimer.stop()
+            taskPopupCloseTimer.stop()
+            pendingTaskPopupRequestValid = false
+            pendingTaskPopupAwaitingMediaResolution = false
+        }
+    }
+
+    function openTrashMenu(itemData, visualParent, keyboardInvoked) {
+        if (!surfaceAvailable(trashMenuDialogRef, "trashMenuDialog")
+                || !surfaceAvailable(trashIntegrationRef, "trashIntegration")
+                || !surfaceAvailable(trashContextContentRef, "trashContextContent")) {
+            return
+        }
+        const wasActive = root.popupDialogActive(trashMenuDialogRef)
+        closeAllPopups(trashMenuDialogRef)
+        activeTrashEmptySound = itemData && itemData.emptySound
+            ? String(itemData.emptySound)
+            : ""
+        root.assignPopupAnchor(trashMenuDialogRef,
+            preparePopupAnchor(visualParent))
+        if (trashIntegrationRef.emptying) {
+            trashContextContentRef.showConfirmation()
+        } else {
+            trashIntegrationRef.resetOperationState()
+            trashContextContentRef.showMenu(!!keyboardInvoked)
+        }
+        if (wasActive) {
+            root.hidePopupDialog(trashMenuDialogRef)
+        } else {
+            root.showPopupDialog(trashMenuDialogRef)
+        }
+    }
+
+    function openAppContextMenu(itemData, visualParent, taskRows, itemOrigin, persistentIndex) {
+        if (!surfaceAvailable(taskControllerRef, "taskController")
+                || !surfaceAvailable(mprisControllerRef, "mprisController")
+                || !surfaceAvailable(appActionsDialogRef, "appActionsDialog")
+                || !surfaceAvailable(taskWindowsDialogRef, "taskWindowsDialog")
+                || !surfaceAvailable(taskWindowsPopupContentRef, "taskWindowsPopupContent")) {
+            return
+        }
+        const rows = taskRows instanceof Array
+            ? taskRows
+            : taskControllerRef.taskStateForDockItem(itemData).rows
+        const applicationId = applicationIdentityResolver
+            ? applicationIdentityResolver(itemData)
+            : ""
+        const taskPopupAlreadyActive = taskWindowsDialogRef.visible
+            && taskPopupVisualParent === visualParent
+        if (taskPopupAlreadyActive && taskPopupAnimatedContentRef) {
+            taskPopupAnimatedContentRef.cancelClosing()
+        }
+        if (taskPopupAlreadyActive && taskWindowsPopupContentRef.actionsVisible) {
+            taskPopupOpenTimer.stop()
+            taskPopupCloseTimer.stop()
+            taskWindowsPopupContentRef.showPreviews()
+            return
+        }
+        const contextualTaskApplicationId = taskControllerRef.taskApplicationIdForRows(rows)
+        const preserveMediaContext = taskPopupAlreadyActive
+            && mediaHoverActive
+            && String(activeTaskPopupData.applicationId || "") === contextualTaskApplicationId
+        if (!taskPopupAlreadyActive) {
+            mprisControllerRef.applicationId = applicationId
+            activeTaskPopupPresentation = "none"
+        }
+        const actions = contextActionsResolver
+            ? contextActionsResolver(itemData, rows, itemOrigin || "",
+                Number.isInteger(persistentIndex) ? persistentIndex : -1)
+            : []
+        if (actions.length === 0) {
+            return
+        }
+
+        activeAppContextMenuData = {
+            "name": itemData && itemData.name ? itemData.name : "",
+            "icon": itemData && itemData.icon ? itemData.icon : "emblem-music-symbolic",
+            "actions": actions,
+            "maxVisibleRows": itemData
+                && itemData.actionPopupMaxVisibleRows !== undefined
+                && Number.isFinite(Number(itemData.actionPopupMaxVisibleRows))
+                ? Math.max(1, Math.min(12,
+                    Math.round(Number(itemData.actionPopupMaxVisibleRows))))
+                : 0
+        }
+        if (taskPopupAlreadyActive) {
+            taskPopupOpenTimer.stop()
+            taskPopupCloseTimer.stop()
+            taskWindowsPopupContentRef.showActions(!preserveMediaContext)
+            return
+        }
+
+        const anchor = preparePopupAnchor(visualParent)
+        closeAllPopups(appActionsDialogRef)
+        contextMenuOpening = true
+        Qt.callLater(function() {
+            root.assignPopupAnchor(appActionsDialogRef, anchor)
+            root.showPopupDialog(appActionsDialogRef)
+            Qt.callLater(function() {
+                root.contextMenuOpening = false
+            })
+        })
+    }
+
+    function openFolderPopup(itemData, visualParent) {
+        if (!surfaceAvailable(folderPopupDialogRef, "folderPopupDialog")) {
+            return
+        }
+        const wasActive = root.popupDialogActive(folderPopupDialogRef)
+        // Clicking a different folder while one is open should also switch,
+        // while clicking the CURRENT icon keeps the accepted toggle-to-close.
+        if (wasActive && folderPopupDialogRef.visible
+                && folderPopupDialogRef.sourceAnchor !== visualParent
+                && itemData && itemData.type === "folder"
+                && root.requestFolderHoverSwitch(itemData, visualParent, true))
+            return
+        root.cancelFolderHoverSwitch()
+        if (!wasActive) root.folderPopupOpening(itemData)
+        closeAllPopups(folderPopupDialogRef)
+        activeFolderData = itemData
+        activeFolderModelIndex = visualParent
+            && Number.isInteger(Number(visualParent.index))
+            ? Number(visualParent.index) : -1
+        root.assignPopupAnchor(folderPopupDialogRef,
+            preparePopupAnchor(visualParent))
+        if (wasActive) {
+            root.hidePopupDialog(folderPopupDialogRef)
+        } else {
+            root.showPopupDialog(folderPopupDialogRef)
+        }
+    }
+
+    function openCalendarPopup(itemData, visualParent) {
+        if (!surfaceAvailable(calendarPopupDialogRef, "calendarPopupDialog")) {
+            return
+        }
+        closeAllPopups(calendarPopupDialogRef)
+        activeCalendarData = itemData || ({})
+        calendarPopupDialogRef.visualParent = preparePopupAnchor(visualParent)
+        calendarPopupDialogRef.visible = !calendarPopupDialogRef.visible
+    }
+
+    function openNotePopup(itemData, visualParent, itemIndex) {
+        if (!surfaceAvailable(notePopupDialogRef, "notePopupDialog")
+                || !surfaceAvailable(notePopupContentRef, "notePopupContent")) {
+            return
+        }
+        closeAllPopups(null)
+        activeNoteData = itemData
+        activeNoteIndex = Number.isInteger(itemIndex) ? itemIndex : -1
+        notePopupDialogRef.visualParent = preparePopupAnchor(visualParent)
+        root.showPopupDialog(notePopupDialogRef)
+        Qt.callLater(function() {
+            root.notePopupContentRef.focusEditor()
+        })
+    }
+
+    function openTaskWindowsPopup(appName, rows, visualParent, keyboardInvoked, previewFallback) {
+        if (!surfaceAvailable(taskWindowsDialogRef, "taskWindowsDialog")
+                || !surfaceAvailable(taskWindowsPopupContentRef, "taskWindowsPopupContent")
+                || !surfaceAvailable(taskControllerRef, "taskController")) {
+            return
+        }
+        taskPopupOpenTimer.stop()
+        const popupRows = rows || []
+        const popupWindows = taskControllerRef.taskWindowsForRows(popupRows)
+        // A maximized foreground window is already visible. Hovering its
+        // launcher should never resize its state indicator or raise a preview.
+        // Preserve previews for groups containing other windows and keyboard
+        // invoked actions, which must remain accessible.
+        if (!keyboardInvoked && popupWindows.length === 1
+                && popupWindows[0].active && popupWindows[0].maximized) {
+            closeTaskWindowsPopup(true)
+            return
+        }
+        const applicationId = taskControllerRef.taskApplicationIdForRows(popupRows)
+        const previewAllowed = windowPreviewsEnabled
+            && previewFallback !== false
+            && popupWindows.length > 0
+        const presentation = taskPresentationPolicy.resolve(
+            applicationId, previewAllowed)
+        if (presentation === "waiting") {
+            pendingTaskPopupAwaitingMediaResolution = true
+            return
+        }
+        pendingTaskPopupAwaitingMediaResolution = false
+        if (taskPopupAnimatedContentRef) {
+            taskPopupAnimatedContentRef.cancelClosing()
+        }
+        closeAllPopups(taskWindowsDialogRef)
+        taskWindowsPopupContentRef.showPreviews()
+        if (presentation === "none") {
+            if (root.popupDialogActive(taskWindowsDialogRef)) {
+                root.hideTaskWindowsDialog()
+            }
+            resetTaskPopupState()
+            return
+        }
+        activeTaskPopupPresentation = presentation
+        activeTaskPopupData = {
+            "name": appName || "",
+            "icon": popupWindows.length > 0 && popupWindows[0].icon
+                ? popupWindows[0].icon
+                : "emblem-music-symbolic",
+            "applicationId": applicationId,
+            "windowUuids": popupWindows.map(function(windowData) {
+                return String(windowData.windowUuid || "")
+            }).filter(function(uuid) {
+                return uuid.length > 0
+            }),
+            "windows": popupWindows
+        }
+        const resolvedTaskAnchor = taskPopupAnchor(visualParent)
+        taskPopupUsesStableAnchor = stableTaskPopupAnchorRef
+            && resolvedTaskAnchor === stableTaskPopupAnchorRef
+        taskWindowsDialogRef.visualParent = preparePopupAnchor(resolvedTaskAnchor)
+        taskPopupVisualParent = visualParent
+        pendingTaskPopupRequestValid = false
+        showTaskWindowsDialog()
+        if (taskPresentationPolicy.isReplacement(presentation)
+                && keyboardInvoked && taskPopupSurfaceRef) {
+            Qt.callLater(function() {
+                root.taskPopupSurfaceRef.focusMediaControls()
+            })
+        }
+    }
+
+    function pendingTaskPopupRequestActive() {
+        return root.pendingTaskPopupRequestValid
+            && root.pendingTaskPopupRows.length > 0
+            && !!root.taskPopupVisualParent
+    }
+
+    function resumePendingTaskPopupAfterMediaResolution() {
+        if (!root.mprisControllerRef
+                || !root.mediaHoverEnabled
+                || !root.mediaReplacementMode
+                || root.mprisControllerRef.resolving
+                || !root.pendingTaskPopupAwaitingMediaResolution
+                || taskPopupOpenTimer.running
+                || root.contextMenuVisible
+                || !root.pendingTaskPopupRequestActive()) {
+            return
+        }
+        const applicationId = root.taskControllerRef
+            ? root.taskControllerRef.taskApplicationIdForRows(
+                root.pendingTaskPopupRows)
+            : ""
+        if (String(root.mprisControllerRef.applicationId || "")
+                !== String(applicationId || "")) {
+            return
+        }
+        root.openTaskWindowsPopup(root.pendingTaskPopupAppName,
+            root.pendingTaskPopupRows, root.taskPopupVisualParent,
+            root.pendingTaskPopupKeyboardInvoked,
+            root.pendingTaskPopupPreviewFallback)
+    }
+
+    function openTaskOverflowPopup(visualParent) {
+        if (!surfaceAvailable(taskOverflowDialogRef, "taskOverflowDialog")) {
+            return
+        }
+        closeAllPopups(taskOverflowDialogRef)
+        taskOverflowDialogRef.visualParent = preparePopupAnchor(visualParent)
+        root.showPopupDialog(taskOverflowDialogRef)
+    }
+
+    function scheduleTaskWindowsPopup(appName, rows, visualParent, keyboardInvoked, previewFallback) {
+        if (contextMenuVisible) {
+            taskPopupOpenTimer.stop()
+            pendingTaskPopupRequestValid = false
+            return
+        }
+        if (taskWindowsDialogRef && taskWindowsDialogRef.visible
+                && taskPopupAnimatedContentRef) {
+            taskPopupAnimatedContentRef.cancelClosing()
+        }
+        if (root.popupDialogActive(taskWindowsDialogRef)
+                && taskPopupVisualParent
+                && taskPopupVisualParent !== visualParent) {
+            root.hideTaskWindowsDialog()
+            root.activeTaskPopupPresentation = "none"
+        }
+        pendingTaskPopupAppName = appName || ""
+        pendingTaskPopupRows = rows || []
+        taskPopupVisualParent = visualParent || null
+        pendingTaskPopupKeyboardInvoked = !!keyboardInvoked
+        pendingTaskPopupPreviewFallback = windowPreviewsEnabled
+            && previewFallback !== false
+        pendingTaskPopupRequestValid = pendingTaskPopupRows.length > 0
+            && !!taskPopupVisualParent
+        pendingTaskPopupAwaitingMediaResolution = false
+        if (!pendingTaskPopupPreviewFallback && !mediaHoverEnabled) {
+            resetTaskPopupState()
+            return
+        }
+        if (mediaHoverEnabled && mprisControllerRef && taskControllerRef) {
+            mprisControllerRef.applicationId = taskControllerRef.taskApplicationIdForRows(
+                pendingTaskPopupRows)
+        }
+        taskPopupCloseTimer.stop()
+        if (pendingTaskPopupRows.length > 0 && taskPopupVisualParent) {
+            if (taskWindowsDialogRef && taskWindowsDialogRef.visible
+                    && taskWindowsDialogRef.visualParent
+                        !== taskPopupAnchor(taskPopupVisualParent)) {
+                openTaskWindowsPopup(pendingTaskPopupAppName, pendingTaskPopupRows,
+                    taskPopupVisualParent, pendingTaskPopupKeyboardInvoked,
+                    pendingTaskPopupPreviewFallback)
+                return
+            }
+            taskPopupOpenTimer.restart()
+        }
+    }
+
+    function cancelPendingTaskWindowsPopup(visualParent) {
+        if (visualParent && taskPopupVisualParent && visualParent !== taskPopupVisualParent) {
+            return
+        }
+        pendingTaskPopupRequestValid = false
+        pendingTaskPopupAwaitingMediaResolution = false
+        if (!root.popupDialogActive(taskWindowsDialogRef)) {
+            resetTaskPopupState()
+            return
+        }
+        if (taskWindowsDialogRef.preparingToShow
+                && !taskWindowsDialogRef.visible) {
+            root.hideTaskWindowsDialog()
+            resetTaskPopupState()
+            return
+        }
+        if (!taskPopupHovered) {
+            taskPopupCloseTimer.restart()
+        }
+    }
+
+    function cancelTaskPopupForPointerReorder() {
+        if (root.popupDialogActive(taskWindowsDialogRef)) {
+            root.hideTaskWindowsDialog()
+        }
+        root.resetTaskPopupState()
+    }
+
+    function resetTaskPopupState() {
+        taskPopupOpenTimer.stop()
+        taskPopupCloseTimer.stop()
+        mediaAvailabilityFallbackTimer.stop()
+        clearPendingDynamicTaskPopupOwnerRestore()
+        pendingTaskPopupAppName = ""
+        pendingTaskPopupRows = []
+        taskPopupVisualParent = null
+        taskPopupHovered = false
+        pendingTaskPopupKeyboardInvoked = false
+        pendingTaskPopupPreviewFallback = true
+        pendingTaskPopupRequestValid = false
+        pendingTaskPopupAwaitingMediaResolution = false
+        activeTaskPopupPresentation = "none"
+        taskPopupUsesStableAnchor = false
+        if (stableTaskPopupAnchorRef
+                && typeof stableTaskPopupAnchorRef.clear === "function") {
+            stableTaskPopupAnchorRef.clear()
+        }
+    }
+
+    function closeMediaHoverFromKeyboard() {
+        const sourceItem = taskPopupVisualParent
+        if (taskWindowsDialogRef) {
+            hideTaskWindowsDialog()
+        }
+        if (sourceItem && sourceItem.focusItem) {
+            Qt.callLater(function() {
+                sourceItem.focusItem()
+            })
+        }
+    }
+
+    function closeTaskWindowsPopup(animated) {
+        taskPopupOpenTimer.stop()
+        taskPopupCloseTimer.stop()
+        if (!root.popupDialogActive(taskWindowsDialogRef)) {
+            return
+        }
+        if (taskWindowsDialogRef.visible
+                && animated && taskPopupAnimatedContentRef) {
+            taskPopupAnimatedContentRef.beginClosing()
+            return
+        }
+        hideTaskWindowsDialog()
+    }
+
+    function setTaskPopupHovered(hovered) {
+        taskPopupHovered = hovered
+        if (hovered) {
+            taskPopupCloseTimer.stop()
+            if (taskPopupAnimatedContentRef) {
+                taskPopupAnimatedContentRef.cancelClosing()
+            }
+        } else if (!taskPopupSourceContainsMouse()) {
+            taskPopupCloseTimer.restart()
+        }
+    }
+
+    function taskPopupSourceContainsMouse() {
+        try {
+            return !!(taskPopupVisualParent && taskPopupVisualParent.containsMouse)
+        } catch (error) {
+            return false
+        }
+    }
+
+    function dynamicTaskPopupOwnerMatches(visualParent, taskRows) {
+        if (!taskPopupUsesStableAnchor || !visualParent
+                || !visualParent.taskPopupAnchorItem
+                || !taskControllerRef
+                || !root.popupDialogActive(taskWindowsDialogRef)) {
+            return false
+        }
+
+        const popupData = activeTaskPopupData || {}
+        const applicationId = String(popupData.applicationId || "")
+        const candidateApplicationId = String(
+            taskControllerRef.taskApplicationIdForRows(taskRows || []) || "")
+        let matches = applicationId.length > 0
+            && candidateApplicationId === applicationId
+
+        if (!matches && applicationId.length === 0) {
+            const popupWindowUuids = popupData.windowUuids instanceof Array
+                ? popupData.windowUuids : []
+            const candidateWindows = taskControllerRef.taskWindowsForRows(
+                taskRows || [])
+            matches = candidateWindows.some(function(windowData) {
+                const uuid = String(windowData.windowUuid || "")
+                return uuid.length > 0 && popupWindowUuids.indexOf(uuid) >= 0
+            })
+        }
+        return matches
+    }
+
+    function taskPopupAnchorGeometryIsValid(geometry) {
+        return geometry
+            && Number.isFinite(Number(geometry.x))
+            && Number.isFinite(Number(geometry.y))
+            && Number.isFinite(Number(geometry.width))
+            && Number(geometry.width) > 0
+            && Number.isFinite(Number(geometry.height))
+            && Number(geometry.height) > 0
+    }
+
+    function taskPopupAnchorGeometriesMatch(first, second) {
+        if (!taskPopupAnchorGeometryIsValid(first)
+                || !taskPopupAnchorGeometryIsValid(second)) {
+            return false
+        }
+        const tolerance = 0.01
+        return Math.abs(Number(first.x) - Number(second.x)) <= tolerance
+            && Math.abs(Number(first.y) - Number(second.y)) <= tolerance
+            && Math.abs(Number(first.width) - Number(second.width)) <= tolerance
+            && Math.abs(Number(first.height) - Number(second.height)) <= tolerance
+    }
+
+    function clearPendingDynamicTaskPopupOwnerRestore() {
+        dynamicTaskPopupOwnerRestoreTimer.stop()
+        pendingDynamicTaskPopupOwner = null
+        pendingDynamicTaskPopupRows = []
+        pendingDynamicTaskPopupGeometry = Qt.rect(0, 0, 0, 0)
+        pendingDynamicTaskPopupStableSamples = 0
+        pendingDynamicTaskPopupRestoreAttempts = 0
+    }
+
+    function scheduleDynamicTaskPopupOwnerRestore(visualParent, taskRows) {
+        if (!dynamicTaskPopupOwnerMatches(visualParent, taskRows)
+                || !stableTaskPopupAnchorRef
+                || typeof stableTaskPopupAnchorRef.geometryFor !== "function") {
+            return false
+        }
+
+        pendingDynamicTaskPopupOwner = visualParent
+        pendingDynamicTaskPopupRows = taskRows instanceof Array
+            ? taskRows.slice() : []
+        pendingDynamicTaskPopupGeometry = Qt.rect(0, 0, 0, 0)
+        pendingDynamicTaskPopupStableSamples = 0
+        pendingDynamicTaskPopupRestoreAttempts = 0
+        dynamicTaskPopupOwnerRestoreTimer.restart()
+        return true
+    }
+
+    function continueDynamicTaskPopupOwnerRestore() {
+        const visualParent = pendingDynamicTaskPopupOwner
+        const taskRows = pendingDynamicTaskPopupRows
+        if (!dynamicTaskPopupOwnerMatches(visualParent, taskRows)) {
+            clearPendingDynamicTaskPopupOwnerRestore()
+            return
+        }
+
+        const geometry = stableTaskPopupAnchorRef.geometryFor(
+            visualParent.taskPopupAnchorItem)
+        const geometryValid = taskPopupAnchorGeometryIsValid(geometry)
+        pendingDynamicTaskPopupRestoreAttempts += 1
+
+        if (geometryValid && taskPopupAnchorGeometriesMatch(
+                geometry, pendingDynamicTaskPopupGeometry)) {
+            pendingDynamicTaskPopupStableSamples += 1
+        } else if (geometryValid) {
+            pendingDynamicTaskPopupGeometry = geometry
+            pendingDynamicTaskPopupStableSamples = 1
+        } else {
+            pendingDynamicTaskPopupStableSamples = 0
+        }
+
+        const attemptsExhausted = pendingDynamicTaskPopupRestoreAttempts
+            >= Math.max(2, maximumDynamicTaskPopupRestoreAttempts)
+        if (geometryValid
+                && (pendingDynamicTaskPopupStableSamples >= 2
+                    || attemptsExhausted)) {
+            restoreDynamicTaskPopupOwner(visualParent, taskRows, geometry)
+            clearPendingDynamicTaskPopupOwnerRestore()
+            return
+        }
+        if (attemptsExhausted) {
+            clearPendingDynamicTaskPopupOwnerRestore()
+            return
+        }
+        dynamicTaskPopupOwnerRestoreTimer.restart()
+    }
+
+    function refreshDynamicTaskPopupAnchor() {
+        if (!stableTaskPopupAnchorRef
+                || !taskWindowsDialogRef
+                || !root.popupDialogActive(taskWindowsDialogRef)) {
+            return false
+        }
+        configureStableTaskPopupAnchor(
+            Number(taskWindowsDialogRef.width || 0),
+            Number(taskWindowsDialogRef.height || 0),
+            stableTaskPopupAnchorRef.popupOnHorizontalEdge !== false)
+        const anchor = preparePopupAnchor(stableTaskPopupAnchorRef)
+        if (taskWindowsDialogRef.visualParent === anchor) {
+            taskWindowsDialogRef.visualParent = null
+        }
+        taskWindowsDialogRef.visualParent = anchor
+        return true
+    }
+
+    function configureStableTaskPopupAnchor(popupWidth, popupHeight,
+            horizontalEdge) {
+        if (!taskPopupUsesStableAnchor
+                || !stableTaskPopupAnchorRef
+                || typeof stableTaskPopupAnchorRef.configureForPopup
+                    !== "function") {
+            return false
+        }
+        return stableTaskPopupAnchorRef.configureForPopup(
+            popupWidth, popupHeight, horizontalEdge)
+    }
+
+    function restoreDynamicTaskPopupOwner(visualParent, taskRows, geometry) {
+        if (!dynamicTaskPopupOwnerMatches(visualParent, taskRows)
+                || !stableTaskPopupAnchorRef
+                || typeof stableTaskPopupAnchorRef.captureGeometry !== "function") {
+            return false
+        }
+
+        const targetGeometry = taskPopupAnchorGeometryIsValid(geometry)
+            ? geometry
+            : stableTaskPopupAnchorRef.geometryFor(
+                visualParent.taskPopupAnchorItem)
+        if (!stableTaskPopupAnchorRef.captureGeometry(targetGeometry)) {
+            return false
+        }
+
+        taskPopupVisualParent = visualParent
+        return refreshDynamicTaskPopupAnchor()
+    }
+
+    function refreshTaskPopupAfterStructureChange() {
+        if (!taskWindowsDialogRef || !taskControllerRef || !taskWindowsDialogRef.visible) {
+            return -1
+        }
+        const popupData = activeTaskPopupData || {}
+        const applicationId = String(popupData.applicationId || "")
+        const windowUuids = popupData.windowUuids instanceof Array
+            ? popupData.windowUuids
+            : []
+        if (applicationId.length === 0 && windowUuids.length === 0) {
+            return -1
+        }
+
+        const windows = taskControllerRef.taskWindowsForIdentity(applicationId, windowUuids)
+        if (windows.length === 0) {
+            hideTaskWindowsDialog()
+            return 0
+        }
+        const previousKey = (popupData.windows || []).map(function(windowData) {
+            return String(windowData.windowUuid || (windowData.row + ":" + windowData.title))
+        }).join("\n")
+        const currentKey = windows.map(function(windowData) {
+            return String(windowData.windowUuid || (windowData.row + ":" + windowData.title))
+        }).join("\n")
+        if (currentKey !== previousKey) {
+            activeTaskPopupData = {
+                "name": String(popupData.name || ""),
+                "icon": String(popupData.icon || "emblem-music-symbolic"),
+                "applicationId": applicationId,
+                "windowUuids": windows.map(function(windowData) {
+                    return String(windowData.windowUuid || "")
+                }).filter(function(uuid) {
+                    return uuid.length > 0
+                }),
+                "windows": windows
+            }
+        }
+        return windows.length
+    }
+
+    function removeTaskPopupWindow(taskRow) {
+        if (!surfaceAvailable(taskWindowsDialogRef, "taskWindowsDialog")) {
+            return
+        }
+        const popupData = activeTaskPopupData || {}
+        const windows = (popupData.windows || []).filter(function(windowData) {
+            return Number(windowData.row) !== Number(taskRow)
+        })
+        if (windows.length === 0) {
+            hideTaskWindowsDialog()
+            return
+        }
+        activeTaskPopupData = {
+            "name": String(popupData.name || ""),
+            "applicationId": String(popupData.applicationId || ""),
+            "windowUuids": windows.map(function(windowData) {
+                return String(windowData.windowUuid || "")
+            }).filter(function(uuid) {
+                return uuid.length > 0
+            }),
+            "windows": windows
+        }
+    }
+
+    function isPopupActiveForVisualParent(targetItem) {
+        if (!targetItem) {
+            return false
+        }
+        const anchor = popupAnchor(targetItem)
+        const isTarget = function(dialog) {
+            if (!dialog || !dialog.visible) {
+                return false
+            }
+            const source = typeof dialog.sourceAnchor !== "undefined"
+                ? dialog.sourceAnchor : dialog.visualParent
+            return source === targetItem || source === anchor
+        }
+        return isTarget(folderPopupDialogRef)
+            || isTarget(calendarPopupDialogRef)
+            || isTarget(notePopupDialogRef)
+            || isTarget(trashMenuDialogRef)
+            || isTarget(appActionsDialogRef)
+            || isTarget(taskWindowsDialogRef)
+            || isTarget(taskOverflowDialogRef)
+            || isTarget(punchiMenuDialogRef)
+    }
+}

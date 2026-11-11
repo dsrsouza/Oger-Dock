@@ -1,0 +1,277 @@
+Oger Dock 1.0.0 — Node regression suite
+39/51 PASS
+
+FAIL test-r31.mjs code=1
+ = root.trayActionsPopupRef\n' +
+    '        if (!popup) return false\n' +
+    '        if (popup.visible || popup.preparingToShow) {\n' +
+    '            root.pinnedTrayMenuNavigating = true\n' +
+    '            popup.closeSafely()\n' +
+    '            Qt.callLater(function() {\n' +
+    '                if (!root.pinnedTrayMenuNavigating) return\n' +
+    '                root.pinnedTrayMenuNavigating = false\n' +
+    '                root.openTrayQuickMenu(true)\n' +
+    '            })\n' +
+    '            return true\n' +
+    '        }\n' +
+    '        return root.openTrayQuickMenu(true)\n' +
+    '    }\n' +
+    '    function trayActivationGlobalPoint(anchor) {\n' +
+    '        if (!anchor || typeof anchor.mapToGlobal !== "function")\n' +
+    '            return Qt.point(-1, -1)\n' +
+    '        return anchor.mapToGlobal(Qt.point(anchor.width / 2, anchor.height / 2))\n' +
+    '    }\n' +
+    '    function activateTrayDesktopEntry(desktopId, anchor) {\n' +
+    '        const
+
+PASS test-r32.mjs code=0
+PASS test-r33.mjs code=0
+PASS test-r34.mjs code=0
+PASS test-r35.mjs code=0
+PASS test-r36.mjs code=0
+PASS test-r37.mjs code=0
+PASS test-r38.mjs code=0
+PASS test-r39.mjs code=0
+PASS test-r40.mjs code=0
+PASS test-r41.mjs code=0
+PASS test-r42.mjs code=0
+PASS test-r43.mjs code=0
+FAIL test-r44.mjs code=1
+node:internal/modules/run_main:123
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: must preserve approved SNI C++ and fan motion: src/traywindowbridge.cpp
++ actual - expected
+
++ '8919ddd658132753987c66d06d7ce2e55e7617103a117b3416a01def5fcb4bec'
+- '45948a356f175382df55d854a0ed0f9f3fc438ba76a11142410cac5aabdd1c4e'
+
+    at file:///mnt/data/Oger-Dock-1.0.0-Fonte/tests-dev/test-r44.mjs:69:10
+    at ModuleJob.run (node:internal/modules/esm/module_job:274:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:644:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5) {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: '8919ddd658132753987c66d06d7ce2e55e7617103a117b3416a01def5fcb4bec',
+  expected: '45948a356f175382df55d854a0ed0f9f3fc438ba76a11142410cac5aabdd1c4e',
+  operator: 'strictEqual'
+}
+
+Node.js v22.16.0
+
+
+PASS test-r45.mjs code=0
+PASS test-r46.mjs code=0
+PASS test-r47.mjs code=0
+PASS test-r48.mjs code=0
+PASS test-r49.mjs code=0
+PASS test-r50.mjs code=0
+PASS test-r51.mjs code=0
+PASS test-r52.mjs code=0
+PASS test-r53.mjs code=0
+PASS test-r54.mjs code=0
+FAIL test-r56-1.mjs code=1
+node:internal/modules/run_main:123
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: GridLayout must still contain the item editor
+    at file:///mnt/data/Oger-Dock-1.0.0-Fonte/tests-dev/test-r56-1.mjs:10:8
+    at ModuleJob.run (node:internal/modules/esm/module_job:274:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:644:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5) {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: null,
+  expected: true,
+  operator: '=='
+}
+
+Node.js v22.16.0
+
+
+FAIL test-r56.mjs code=1
+th: timedDialog.timedItemWidthControl\n' +
+    '    property alias timedTextScale: timedDialog.timedTextScaleControl\n' +
+    '    property alias calendarItemHeight: timedDialog.calendarItemHeightControl\n' +
+    '    property alias calendarTimeTextScale: timedDialog.calendarTimeTextScaleControl\n' +
+    '    property alias calendarDateTextScale: timedDialog.calendarDateTextScaleControl\n' +
+    '    property alias calendarTextShadows: timedDialog.calendarTextShadowsControl\n' +
+    '    property alias calendarFormat: timedDialog.calendarFormatControl\n' +
+    '    property alias calendarShowWeekNumbers: timedDialog.calendarShowWeekNumbersControl\n' +
+    '    property alias calendarPopupScale: timedDialog.calendarPopupScaleControl\n' +
+    '    property alias clockColor: timedDialog.calendarTextColorControl\n' +
+    '    property alias calendarTextColor: timedDialog.calendarTextColorControl\n' +
+    '    property alias calendarBackgroundColor: timedDialog.calendarBackgroundColorContro
+
+FAIL test-r57-1.mjs code=1
+t disable unqualified\n' +
+    '                    font.weight: Font.DemiBold\n' +
+    '                    Layout.fillWidth: true\n' +
+    '                    elide: Text.ElideRight\n' +
+    '                }\n' +
+    '                Controls.Button {\n' +
+    '                    id: addItemButton\n' +
+    '                    objectName: "dockPreviewAddItem"\n' +
+    '                    text: i18nc("@action:button", "Add item") // qmllint disable unqualified\n' +
+    '                    icon.name: "list-add-symbolic"\n' +
+    '                    Accessible.name: i18nc("@action:button", "Add item to Dock") // qmllint disable unqualified\n' +
+    '                    onClicked: root.addItemRequested()\n' +
+    '                    Controls.ToolTip.visible: hovered\n' +
+    '                    Controls.ToolTip.text: Accessible.name\n' +
+    '                }\n' +
+    '                Controls.Button {\n' +
+    '                    objectName: "dockPreviewRemoveItem"\n' +
+    '
+
+FAIL test-r57.mjs code=1
+ disable unqualified\n' +
+    '                    font.weight: Font.DemiBold\n' +
+    '                    Layout.fillWidth: true\n' +
+    '                    elide: Text.ElideRight\n' +
+    '                }\n' +
+    '                Controls.Button {\n' +
+    '                    id: addItemButton\n' +
+    '                    objectName: "dockPreviewAddItem"\n' +
+    '                    text: i18nc("@action:button", "Add item") // qmllint disable unqualified\n' +
+    '                    icon.name: "list-add-symbolic"\n' +
+    '                    Accessible.name: i18nc("@action:button", "Add item to Dock") // qmllint disable unqualified\n' +
+    '                    onClicked: root.addItemRequested()\n' +
+    '                    Controls.ToolTip.visible: hovered\n' +
+    '                    Controls.ToolTip.text: Accessible.name\n' +
+    '                }\n' +
+    '                Controls.Button {\n' +
+    '                    objectName: "dockPreviewRemoveItem"\n' +
+    ' 
+
+PASS test-r58-1.mjs code=0
+PASS test-r58.mjs code=0
+PASS test-r59.mjs code=0
+PASS test-r60.mjs code=0
+PASS test-r61.mjs code=0
+FAIL test-r62-1.mjs code=1
+node:internal/modules/run_main:123
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
++ actual - expected
+
+  [
++   'Diego Souza.R',
++   'Punchisoft'
+-   'Diego Souza Rego e Punchisoft'
+  ]
+
+    at file:///mnt/data/Oger-Dock-1.0.0-Fonte/tests-dev/test-r62-1.mjs:13:8
+    at ModuleJob.run (node:internal/modules/esm/module_job:274:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:644:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5) {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: [ 'Diego Souza.R', 'Punchisoft' ],
+  expected: [ 'Diego Souza Rego e Punchisoft' ],
+  operator: 'deepStrictEqual'
+}
+
+Node.js v22.16.0
+
+
+PASS test-r62-2-navigation.mjs code=0
+PASS test-r62-2.mjs code=0
+PASS test-r62-3-folder-preview.mjs code=0
+FAIL test-r62-4-navigation-audit.mjs code=1
+ntrol\n' +
+    '    property alias timedTextScale: timedDialog.timedTextScaleControl\n' +
+    '    property alias calendarItemHeight: timedDialog.calendarItemHeightControl\n' +
+    '    property alias calendarTimeTextScale: timedDialog.calendarTimeTextScaleControl\n' +
+    '    property alias calendarDateTextScale: timedDialog.calendarDateTextScaleControl\n' +
+    '    property alias calendarTextShadows: timedDialog.calendarTextShadowsControl\n' +
+    '    property alias calendarFormat: timedDialog.calendarFormatControl\n' +
+    '    property alias calendarShowWeekNumbers: timedDialog.calendarShowWeekNumbersControl\n' +
+    '    property alias calendarPopupScale: timedDialog.calendarPopupScaleControl\n' +
+    '    property alias clockColor: timedDialog.calendarTextColorControl\n' +
+    '    property alias calendarTextColor: timedDialog.calendarTextColorControl\n' +
+    '    property alias calendarBackgroundColor: timedDialog.calendarBackgroundColorControl\n' +
+    '    property alias c
+
+FAIL test-r62-5-real-navigation.mjs code=1
+alias timedItemWidth: timedDialog.timedItemWidthControl\n' +
+    '    property alias timedTextScale: timedDialog.timedTextScaleControl\n' +
+    '    property alias calendarItemHeight: timedDialog.calendarItemHeightControl\n' +
+    '    property alias calendarTimeTextScale: timedDialog.calendarTimeTextScaleControl\n' +
+    '    property alias calendarDateTextScale: timedDialog.calendarDateTextScaleControl\n' +
+    '    property alias calendarTextShadows: timedDialog.calendarTextShadowsControl\n' +
+    '    property alias calendarFormat: timedDialog.calendarFormatControl\n' +
+    '    property alias calendarShowWeekNumbers: timedDialog.calendarShowWeekNumbersControl\n' +
+    '    property alias calendarPopupScale: timedDialog.calendarPopupScaleControl\n' +
+    '    property alias clockColor: timedDialog.calendarTextColorControl\n' +
+    '    property alias calendarTextColor: timedDialog.calendarTextColorControl\n' +
+    '    property alias calendarBackgroundColor: timedDialog.calendarBac
+
+PASS test-r62-6-restore-preview.mjs code=0
+FAIL test-r62-7-lazy-tabs-tray.mjs code=1
+node:internal/modules/run_main:123
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: popupAppearancePage must be a lazy Loader
+    at file:///mnt/data/Oger-Dock-1.0.0-Fonte/tests-dev/test-r62-7-lazy-tabs-tray.mjs:25:10
+    at ModuleJob.run (node:internal/modules/esm/module_job:274:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:644:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5) {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: null,
+  expected: true,
+  operator: '=='
+}
+
+Node.js v22.16.0
+
+
+PASS test-r62-8-kde-settings.mjs code=0
+PASS test-r62-9-tray-activation-position.mjs code=0
+FAIL test-r63-0-settings-layout.mjs code=1
+erty int activeFontSize: activeProfile === "fan"\n' +
+    '        ? cfg_folderFanFontSize\n' +
+    '        : (activeProfile === "list"\n' +
+    '            ? cfg_folderListFontSize\n' +
+    '            : (activeProfile === "detailed"\n' +
+    '                ? cfg_folderDetailedFontSize\n' +
+    '                : cfg_folderGridFontSize))\n' +
+    '    // qmllint disable unqualified\n' +
+    '    readonly property var profileOptions: [\n' +
+    '        { "text": i18nc("@item:inlistbox Folder popup layout", "Grid"), "value": "grid" },\n' +
+    '        { "text": i18nc("@item:inlistbox Folder popup layout", "List"), "value": "list" },\n' +
+    '        { "text": i18nc("@item:inlistbox Folder popup layout", "Detailed"), "value": "detailed" },\n' +
+    '        { "text": i18nc("@item:inlistbox Folder popup layout", "Fan"), "value": "fan" }\n' +
+    '    ]\n' +
+    '    readonly property var gridArrangementOptions: [\n' +
+    '        { "text": i18nc("@item:inlistbox Grid arrangement"
+
+FAIL test-r63-1-folder-colors.mjs code=1
+erty int activeFontSize: activeProfile === "fan"\n' +
+    '        ? cfg_folderFanFontSize\n' +
+    '        : (activeProfile === "list"\n' +
+    '            ? cfg_folderListFontSize\n' +
+    '            : (activeProfile === "detailed"\n' +
+    '                ? cfg_folderDetailedFontSize\n' +
+    '                : cfg_folderGridFontSize))\n' +
+    '    // qmllint disable unqualified\n' +
+    '    readonly property var profileOptions: [\n' +
+    '        { "text": i18nc("@item:inlistbox Folder popup layout", "Grid"), "value": "grid" },\n' +
+    '        { "text": i18nc("@item:inlistbox Folder popup layout", "List"), "value": "list" },\n' +
+    '        { "text": i18nc("@item:inlistbox Folder popup layout", "Detailed"), "value": "detailed" },\n' +
+    '        { "text": i18nc("@item:inlistbox Folder popup layout", "Fan"), "value": "fan" }\n' +
+    '    ]\n' +
+    '    readonly property var gridArrangementOptions: [\n' +
+    '        { "text": i18nc("@item:inlistbox Grid arrangement"
+
+PASS test-r63-3-tray-promotion.mjs code=0
+PASS test-r63-4-real-folders-scroll.mjs code=0
+PASS test-r63-5-mega-hover-toggle.mjs code=0
+PASS test-r63-6-tray-hover-integration.mjs code=0
+PASS test-r63-7-wheel-tray-only.mjs code=0
+PASS test-v1-release-identity.mjs code=0

@@ -1,0 +1,724 @@
+import QtQuick
+import QtQuick.Controls as Controls
+import QtQuick.Layouts
+import org.kde.kirigami as Kirigami
+import org.kde.kcmutils as KCM
+import org.kde.plasma.core as PlasmaCore
+import org.kde.plasma.plasmoid
+import "../org/punchi/dock" as Punchi
+import org.kde.taskmanager as TaskManager
+import "components"
+import "../../code/plasmaPanelSizing.js" as PlasmaPanelSizing
+
+KCM.SimpleKCM {
+    id: page
+
+    // R62.6: immediate category switch; do not animate the entire KCM.
+    // Whole-page transforms cannot shorten control creation and cost frames.
+
+    // R58.1: only this applet's configuration pages request maximized mode.
+    // The KDE-owned window still handles its own close/minimize/Save dialog.
+    ConfigMaximizedWindowGuard {
+        hostWindow: page.Window.window
+        diagnosticCategory: "Geral"
+    }
+    implicitWidth: layoutMetrics.pageImplicitWidth
+
+    ConfigLayoutMetrics {
+        id: layoutMetrics
+        availableWidth: page.width
+    }
+
+    // Variables prefixed with "cfg_" map automatically to KConfig (main.xml).
+    property alias cfg_iconSize: iconSizeSlider.value
+    property alias cfg_iconSpacing: iconSpacingSlider.value
+    property alias cfg_showRecentApplications: recentApplicationsSettings.showApplications
+    property alias cfg_recentApplicationsCount: recentApplicationsSettings.maximumApplications
+    property alias cfg_recentApplicationsMode: recentApplicationsSettings.presentationMode
+    property alias cfg_recentApplicationsContainerLayout: recentApplicationsSettings.containerLayout
+    property string cfg_virtualDesktopMode: "all"
+    property string cfg_targetVirtualDesktop: ""
+    property string cfg_panelLengthMode: "system"
+    property string cfg_panelAlignmentMode: "system"
+    property string cfg_panelFloatingMode: "system"
+    property string cfg_panelVisibilityMode: "system"
+    property int cfg_panelThickness: 0
+    property string cfg_panelOpacityMode: "system"
+    property string cfg_dockThemeMode: "plasma"
+    property bool cfg_unlockPanelIconSizeLimit: false
+    readonly property bool customThemeActiveInPanel: page.inPanel
+        && ((page.cfg_dockThemeMode === "custom") || (String(Plasmoid.configuration.dockThemeMode || "") === "custom"))
+    readonly property bool inPanel: Plasmoid.formFactor === PlasmaCore.Types.Horizontal || Plasmoid.formFactor === PlasmaCore.Types.Vertical
+    readonly property bool verticalPanel: Plasmoid.formFactor === PlasmaCore.Types.Vertical
+    readonly property int contentWidthHint: layoutMetrics.contentWidth
+    readonly property int selectorWidthHint: layoutMetrics.selectorWidth
+    // Plasma::Containment exposes its visual geometry at runtime, although the
+    // generated QML type metadata does not declare width/height.
+    // qmllint disable missing-property
+    readonly property int detectedPanelThickness: {
+        if (panelLengthModeBridge.panelThickness > 0) {
+            return panelLengthModeBridge.panelThickness
+        }
+        try {
+            var containment = Plasmoid.containment
+            if (!containment) {
+                return 0
+            }
+
+            var thickness = verticalPanel
+                ? Math.max(0, Number(containment["width"] || 0))
+                : Math.max(0, Number(containment["height"] || 0))
+            return thickness > 0 ? thickness : 0
+        } catch (error) {
+            return 0
+        }
+    }
+    // qmllint enable missing-property
+    readonly property real currentHoverScale: {
+        const scale = Number(Plasmoid.configuration.hoverScale || 1.65)
+        return Number.isFinite(scale) && scale >= 1.0 ? scale : 1.65
+    }
+    readonly property int safePanelIconSizeMax: {
+        if (detectedPanelThickness <= 0) {
+            return 96
+        }
+        const headroom = 10
+        const availableHeight = Math.max(24, detectedPanelThickness - headroom)
+        const calculatedMax = Math.floor(availableHeight / currentHoverScale)
+        return Math.max(24, Math.min(96, calculatedMax))
+    }
+    readonly property var plasmaPanelSizing: PlasmaPanelSizing.calculate(
+        page.cfg_iconSize, page.currentHoverScale, page.cfg_panelThickness,
+        page.verticalPanel, !!Plasmoid.configuration.showLabels,
+        Kirigami.Units.smallSpacing * 3)
+    // qmllint disable unqualified
+    readonly property var panelLengthOptions: [
+        { "text": i18n("Fit content (Recommended)"), "value": "content" },
+        { "text": verticalPanel ? i18n("Fill height") : i18n("Fill width"), "value": "fill" },
+        { "text": i18n("Custom"), "value": "custom" }
+    ]
+    readonly property var panelAlignmentOptions: verticalPanel ? [
+        { "text": i18n("Top"), "value": "start" },
+        { "text": i18n("Center (Recommended)"), "value": "center" },
+        { "text": i18n("Bottom"), "value": "end" }
+    ] : [
+        { "text": i18n("Left"), "value": "start" },
+        { "text": i18n("Center (Recommended)"), "value": "center" },
+        { "text": i18n("Right"), "value": "end" }
+    ]
+    readonly property var panelFloatingOptions: [
+        { "text": i18n("Disabled"), "value": "disabled" },
+        { "text": i18n("Applets only"), "value": "appletsOnly" },
+        { "text": i18n("Panel and applets (Recommended)"), "value": "panelAndApplets" }
+    ]
+    readonly property var panelVisibilityOptions: [
+        { "text": i18n("Always visible"), "value": "alwaysVisible" },
+        { "text": i18n("Auto hide"), "value": "autoHide" },
+        { "text": i18n("Dodge windows (Recommended)"), "value": "dodgeWindows" },
+        { "text": i18n("Windows go below"), "value": "windowsGoBelow" }
+    ]
+    readonly property var panelOpacityOptions: [
+        { "text": i18n("Adaptive"), "value": "adaptive" },
+        { "text": i18n("Opaque"), "value": "opaque" },
+        { "text": i18n("Translucent"), "value": "translucent" },
+        { "text": i18n("None (No background)"), "value": "none" }
+    ]
+    readonly property var panelThicknessOptions: [
+        { "text": i18n("Automatic (Recommended)"), "value": "auto" },
+        { "text": i18n("Custom"), "value": "custom" }
+    ]
+    // qmllint enable unqualified
+    readonly property var virtualDesktopModel: {
+        var result = []
+        var ids = virtualDesktopInfo.desktopIds
+        var names = virtualDesktopInfo.desktopNames
+        for (var index = 0; index < ids.length; index++) {
+            result.push({
+                "id": String(ids[index]),
+                "name": index < names.length ? names[index] : i18n("Desktop %1", index + 1) // qmllint disable unqualified
+            })
+        }
+        return result
+    }
+    readonly property string defaultTargetVirtualDesktopId: {
+        if (virtualDesktopModel.length === 0) {
+            return ""
+        }
+
+        var currentDesktopId = String(virtualDesktopInfo.currentDesktop || "")
+        if (currentDesktopId.length > 0) {
+            for (var index = 0; index < virtualDesktopModel.length; index++) {
+                if (virtualDesktopModel[index].id === currentDesktopId) {
+                    return currentDesktopId
+                }
+            }
+        }
+
+        return virtualDesktopModel[0].id
+    }
+    readonly property bool targetVirtualDesktopAvailable: cfg_targetVirtualDesktop === ""
+        || virtualDesktopInfo.desktopIds.map(function(desktopId) { return String(desktopId) }).indexOf(cfg_targetVirtualDesktop) !== -1
+
+    TaskManager.VirtualDesktopInfo {
+        id: virtualDesktopInfo
+    }
+    Punchi.PanelLengthModeBridge {
+        id: panelLengthModeBridge
+        containmentId: Plasmoid.containment ? Plasmoid.containment.id : 0
+    }
+
+    Connections {
+        target: virtualDesktopInfo
+
+        function ensureTargetDesktopSelection() {
+            if (page.cfg_virtualDesktopMode === "single"
+                    && page.cfg_targetVirtualDesktop === ""
+                    && page.defaultTargetVirtualDesktopId !== "") {
+                page.cfg_targetVirtualDesktop = page.defaultTargetVirtualDesktopId
+            }
+        }
+
+        function onDesktopIdsChanged() {
+            ensureTargetDesktopSelection()
+        }
+
+        function onCurrentDesktopChanged() {
+            ensureTargetDesktopSelection()
+        }
+    }
+
+    // The dock-state notice is announced when the page opens and then collapses
+    // by itself, so it stops pushing the interactive controls down.
+    // Kirigami.InlineMessage animates its own fade and height and keeps the
+    // animation disabled when the user turns off animations system-wide.
+    readonly property int statusNoticeDuration: 5000
+    property bool statusNoticeVisible: true
+
+    Timer {
+        id: statusNoticeTimer
+        interval: page.statusNoticeDuration
+        repeat: false
+        running: true
+        onTriggered: page.statusNoticeVisible = false
+    }
+
+    // qmllint disable unqualified
+    header: Controls.TabBar {
+        id: generalTabs
+        objectName: "generalTabs"
+        Accessible.name: i18n("General sections")
+
+        Controls.TabButton {
+            text: i18n("Dock")
+        }
+
+        Controls.TabButton {
+            text: i18n("Extras")
+        }
+    }
+    // qmllint enable unqualified
+
+    // Both tab forms stay instantiated and visible so that
+    // Kirigami.FormLayout can share a single label and control column through
+    // twinFormLayouts. A form hidden with visible: false stops contributing its
+    // label widths to that shared column, which shifted the controls between
+    // tabs. Only the active form keeps its height; the inactive one is
+    // collapsed to zero height, clipped, disabled and hidden from assistive
+    // technologies.
+    ColumnLayout {
+        id: generalStack
+        spacing: 0
+
+        // Dock tab: dock, panel, icon and virtual desktop settings.
+        Kirigami.FormLayout {
+            id: dockSettingsForm
+            Layout.fillWidth: true
+            Layout.preferredHeight: generalTabs.currentIndex === 0 ? implicitHeight : 0
+            clip: true
+            enabled: generalTabs.currentIndex === 0
+            Accessible.ignored: generalTabs.currentIndex !== 0
+            twinFormLayouts: [recentApplicationsSettings]
+
+            Kirigami.InlineMessage {
+                id: statusInlineMessage
+                Kirigami.FormData.isSection: true
+                visible: page.statusNoticeVisible
+                Layout.fillWidth: true
+                type: Kirigami.MessageType.Information
+                showCloseButton: false
+                text: !page.inPanel
+                    ? i18nc("@info:status <b> marks the current dock mode", "Current dock state: <b>Floating mode</b>.<br>Panel-only sizing and integration options are unavailable.") // qmllint disable unqualified
+                    : page.verticalPanel
+                        ? i18nc("@info:status <b> marks the current dock mode", "Current dock state: <b>Vertical panel</b>.<br>Fill free panel space is active only when the Plasma panel is set to Fill available; otherwise Oger Dock remains compact.") // qmllint disable unqualified
+                        : i18nc("@info:status <b> marks the current dock mode", "Current dock state: <b>Horizontal panel</b>.<br>Fill free panel space is active only when the Plasma panel is set to Fill available; otherwise Oger Dock remains compact.") // qmllint disable unqualified
+                Accessible.name: text.replace("<br>", " ").replace("<b>", "").replace("</b>", "")
+            }
+
+            // qmllint disable unqualified
+            RowLayout {
+                visible: page.inPanel
+                Kirigami.FormData.label: page.verticalPanel ? i18n("Panel height:") : i18n("Panel width:")
+                Layout.maximumWidth: page.contentWidthHint
+
+                Controls.ComboBox {
+                    id: panelLengthModeCombo
+                    Layout.preferredWidth: page.selectorWidthHint
+                    Layout.maximumWidth: page.selectorWidthHint
+                    textRole: "text"
+                    valueRole: "value"
+                    model: page.panelLengthOptions
+                    currentIndex: {
+                        const cfg = page.cfg_panelLengthMode
+                        if (cfg === "fill" || cfg === "fillAvailable") {
+                            return 1
+                        }
+                        if (cfg === "custom") {
+                            return 2
+                        }
+                        if (cfg === "content" || cfg === "fitContent" || cfg === "fit") {
+                            return 0
+                        }
+                        if (panelLengthModeBridge.panelLengthMode === 0) {
+                            return 1
+                        }
+                        if (panelLengthModeBridge.panelLengthMode === 2) {
+                            return 2
+                        }
+                        return 0
+                    }
+                    onActivated: page.cfg_panelLengthMode = currentValue
+                    Accessible.name: page.verticalPanel ? i18n("Panel height") : i18n("Panel width")
+
+                }
+            }
+
+            RowLayout {
+                visible: page.inPanel
+                Kirigami.FormData.label: i18n("Panel alignment:")
+                Layout.maximumWidth: page.contentWidthHint
+
+                Controls.ComboBox {
+                    id: panelAlignmentModeCombo
+                    Layout.preferredWidth: page.selectorWidthHint
+                    Layout.maximumWidth: page.selectorWidthHint
+                    textRole: "text"
+                    valueRole: "value"
+                    model: page.panelAlignmentOptions
+                    currentIndex: {
+                        const cfg = page.cfg_panelAlignmentMode
+                        if (cfg === "start" || cfg === "left" || cfg === "top") {
+                            return 0
+                        }
+                        if (cfg === "end" || cfg === "right" || cfg === "bottom") {
+                            return 2
+                        }
+                        if (cfg === "center") {
+                            return 1
+                        }
+                        if (panelLengthModeBridge.panelAlignment === 0) {
+                            return 0
+                        }
+                        if (panelLengthModeBridge.panelAlignment === 2) {
+                            return 2
+                        }
+                        return 1
+                    }
+                    onActivated: page.cfg_panelAlignmentMode = currentValue
+                    Accessible.name: i18n("Panel alignment")
+
+                }
+            }
+
+            RowLayout {
+                visible: page.inPanel
+                Kirigami.FormData.label: i18n("Panel floating mode:")
+                Layout.maximumWidth: page.contentWidthHint
+
+                Controls.ComboBox {
+                    id: panelFloatingModeCombo
+                    Layout.preferredWidth: page.selectorWidthHint
+                    Layout.maximumWidth: page.selectorWidthHint
+                    textRole: "text"
+                    valueRole: "value"
+                    model: page.panelFloatingOptions
+                    currentIndex: {
+                        const cfg = page.cfg_panelFloatingMode
+                        if (cfg === "disabled") {
+                            return 0
+                        }
+                        if (cfg === "appletsOnly") {
+                            return 1
+                        }
+                        if (cfg === "panelAndApplets") {
+                            return 2
+                        }
+                        if (panelLengthModeBridge.panelFloatingMode === 0) {
+                            return 0
+                        }
+                        if (panelLengthModeBridge.panelFloatingMode === 1) {
+                            return 1
+                        }
+                        return 2
+                    }
+                    onActivated: page.cfg_panelFloatingMode = currentValue
+                    Accessible.name: i18n("Panel floating mode")
+
+                }
+            }
+
+            RowLayout {
+                visible: page.inPanel
+                Kirigami.FormData.label: i18n("Panel visibility:")
+                Layout.maximumWidth: page.contentWidthHint
+
+                Controls.ComboBox {
+                    id: panelVisibilityModeCombo
+                    Layout.preferredWidth: page.selectorWidthHint
+                    Layout.maximumWidth: page.selectorWidthHint
+                    textRole: "text"
+                    valueRole: "value"
+                    model: page.panelVisibilityOptions
+                    currentIndex: {
+                        const cfg = page.cfg_panelVisibilityMode
+                        if (cfg === "alwaysVisible") {
+                            return 0
+                        }
+                        if (cfg === "autoHide") {
+                            return 1
+                        }
+                        if (cfg === "dodgeWindows") {
+                            return 2
+                        }
+                        if (cfg === "windowsGoBelow") {
+                            return 3
+                        }
+                        if (panelLengthModeBridge.panelVisibilityMode === 0) {
+                            return 0
+                        }
+                        if (panelLengthModeBridge.panelVisibilityMode === 1) {
+                            return 1
+                        }
+                        if (panelLengthModeBridge.panelVisibilityMode === 2) {
+                            return 2
+                        }
+                        if (panelLengthModeBridge.panelVisibilityMode === 3) {
+                            return 3
+                        }
+                        return 0
+                    }
+                    onActivated: page.cfg_panelVisibilityMode = currentValue
+                    Accessible.name: i18n("Panel visibility")
+
+                }
+            }
+
+            RowLayout {
+                visible: page.inPanel
+                Kirigami.FormData.label: i18n("Panel opacity:")
+                Layout.maximumWidth: page.contentWidthHint
+
+                Controls.ComboBox {
+                    id: panelOpacityModeCombo
+                    Layout.preferredWidth: page.selectorWidthHint
+                    Layout.maximumWidth: page.selectorWidthHint
+                    textRole: "text"
+                    valueRole: "value"
+                    model: page.panelOpacityOptions
+                    enabled: !page.customThemeActiveInPanel
+                    currentIndex: {
+                        if (page.customThemeActiveInPanel) {
+                            return 3
+                        }
+                        const cfg = page.cfg_panelOpacityMode
+                        if (cfg === "adaptive") {
+                            return 0
+                        }
+                        if (cfg === "opaque") {
+                            return 1
+                        }
+                        if (cfg === "translucent") {
+                            return 2
+                        }
+                        if (cfg === "none") {
+                            return 3
+                        }
+                        if (panelLengthModeBridge.panelOpacityMode === 0) {
+                            return 0
+                        }
+                        if (panelLengthModeBridge.panelOpacityMode === 1) {
+                            return 1
+                        }
+                        if (panelLengthModeBridge.panelOpacityMode === 2) {
+                            return 2
+                        }
+                        return 0
+                    }
+                    onActivated: page.cfg_panelOpacityMode = currentValue
+                    Accessible.name: i18n("Panel opacity")
+
+                }
+
+                Controls.Label {
+                    visible: page.customThemeActiveInPanel
+                    text: i18n("Controlled by the active custom JSON theme (No background).")
+                    font: Kirigami.Theme.smallFont
+                    color: Kirigami.Theme.disabledTextColor
+                    Layout.fillWidth: true
+                    elide: Text.ElideRight
+                }
+            }
+
+            RowLayout {
+                visible: page.inPanel
+                Kirigami.FormData.label: page.verticalPanel ? i18n("Panel width:") : i18n("Panel height:")
+                Layout.maximumWidth: page.contentWidthHint
+
+                Controls.ComboBox {
+                    id: panelThicknessModeCombo
+                    Layout.preferredWidth: page.selectorWidthHint
+                    Layout.maximumWidth: page.selectorWidthHint
+                    textRole: "text"
+                    valueRole: "value"
+                    model: page.panelThicknessOptions
+                    currentIndex: page.cfg_panelThickness > 0 ? 1 : 0
+                    onActivated: {
+                        if (currentValue === "auto") {
+                            page.cfg_panelThickness = 0
+                        } else {
+                            page.cfg_panelThickness = page.detectedPanelThickness > 0
+                                ? page.detectedPanelThickness
+                                : 64
+                        }
+                    }
+                    Accessible.name: page.verticalPanel ? i18n("Panel width") : i18n("Panel height")
+
+                }
+            }
+
+            RowLayout {
+                visible: page.inPanel && page.cfg_panelThickness > 0
+                Kirigami.FormData.label: page.verticalPanel ? i18n("Custom width:") : i18n("Custom height:")
+                Layout.maximumWidth: page.contentWidthHint
+
+                Controls.SpinBox {
+                    id: panelThicknessSpinBox
+                    Layout.preferredWidth: page.selectorWidthHint
+                    Layout.maximumWidth: page.selectorWidthHint
+                    from: 24
+                    to: 256
+                    stepSize: 2
+                    editable: true
+                    value: page.cfg_panelThickness > 0 ? page.cfg_panelThickness : 64
+                    onValueModified: page.cfg_panelThickness = value
+                    textFromValue: function(value) {
+                        return value + " px"
+                    }
+                    valueFromText: function(text) {
+                        const parsed = parseInt(text, 10)
+                        return isNaN(parsed) ? 24 : Math.max(24, Math.min(256, parsed))
+                    }
+                    Accessible.name: page.verticalPanel ? i18n("Custom panel width") : i18n("Custom panel height")
+
+                }
+            }
+
+            Kirigami.InlineMessage {
+                Layout.fillWidth: true
+                Layout.maximumWidth: page.contentWidthHint
+                visible: page.customThemeActiveInPanel && page.cfg_panelThickness > 0
+                type: Kirigami.MessageType.Warning
+                text: i18n("Configuring a custom panel size may cause icons to be clipped during wave magnification or create disproportionate margins if the height is not proportional to the icon size.")
+            }
+            // qmllint enable unqualified
+
+            // Icon size control.
+            RowLayout {
+                Kirigami.FormData.label: page.inPanel ? i18n("Panel icon size:") : i18n("Floating icon size:") // qmllint disable unqualified
+                Layout.maximumWidth: page.contentWidthHint
+
+                Controls.Slider {
+                    id: iconSizeSlider
+                    from: 24
+                    to: (page.customThemeActiveInPanel && !page.cfg_unlockPanelIconSizeLimit && page.cfg_panelThickness > 0)
+                        ? page.safePanelIconSizeMax : 96
+                    stepSize: 2
+                    Layout.fillWidth: true
+                    Layout.preferredWidth: page.contentWidthHint - 60
+
+                }
+
+                Controls.Label {
+                    text: iconSizeSlider.value + " px"
+                    font.bold: true
+                    Layout.preferredWidth: 50
+                }
+            }
+
+            // qmllint disable unqualified
+            RowLayout {
+                Kirigami.FormData.label: i18n("Icon spacing:")
+                Layout.maximumWidth: page.contentWidthHint
+
+                Controls.Slider {
+                    id: iconSpacingSlider
+                    from: 0
+                    to: 24
+                    stepSize: 1
+                    Layout.fillWidth: true
+                    Layout.preferredWidth: page.contentWidthHint - 60
+                    Accessible.name: i18n("Icon spacing")
+                    Accessible.description: i18n("Adjusts the spacing between dock icons from 0 to 24 pixels.")
+
+                }
+
+                Controls.Label {
+                    text: Math.round(iconSpacingSlider.value) + " px"
+                    font.bold: true
+                    Layout.preferredWidth: 50
+                }
+            }
+            // qmllint enable unqualified
+
+            // R57: live, non-persistent preview. The sliders are KCM cfg_ aliases;
+            // Apply/OK remain the only ways to commit icon size and spacing.
+            RowLayout {
+                Kirigami.FormData.label: i18nc("@label", "Preview:") // qmllint disable unqualified
+                Layout.fillWidth: true
+                Layout.maximumWidth: page.contentWidthHint
+                IconSizePreview {
+                    Layout.fillWidth: true
+                    Layout.minimumWidth: 0
+                    iconSize: iconSizeSlider.value
+                    iconSpacing: iconSpacingSlider.value
+                    Accessible.name: i18nc("@info:accessibility", "Preview of icon size and spacing") // qmllint disable unqualified
+                }
+            }
+
+            Controls.Label {
+                visible: page.inPanel && !page.customThemeActiveInPanel
+                text: i18n("Effective icon size: %1 px; maximum hover enlargement: %2%", // qmllint disable unqualified
+                    page.plasmaPanelSizing.iconSize,
+                    Math.floor((page.plasmaPanelSizing.hoverScale - 1) * 100 + 0.0001))
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+                Layout.maximumWidth: page.contentWidthHint
+                color: Kirigami.Theme.disabledTextColor
+            }
+
+            RowLayout {
+                visible: page.customThemeActiveInPanel && page.cfg_panelThickness > 0
+                Kirigami.FormData.label: i18n("Limit:") // qmllint disable unqualified
+                Layout.maximumWidth: page.contentWidthHint
+
+                Controls.Label {
+                    text: page.cfg_unlockPanelIconSizeLimit
+                        ? i18n("Safe limits disabled (up to 96 px)") // qmllint disable unqualified
+                        : (page.cfg_panelThickness === 0
+                            ? i18n("Automatic sizing enabled (panel adapts to icons)") // qmllint disable unqualified
+                            : (page.detectedPanelThickness > 0
+                                ? i18n("Estimated panel-safe maximum: %1 px", page.safePanelIconSizeMax) // qmllint disable unqualified
+                                : i18n("The real panel thickness is not available in this view, so a safe fallback limit is being used."))) // qmllint disable unqualified
+                    color: page.cfg_unlockPanelIconSizeLimit ? Kirigami.Theme.neutralTextColor : Kirigami.Theme.textColor
+                    Layout.fillWidth: true
+                    elide: Text.ElideRight
+                }
+
+                Controls.Button {
+                    text: page.cfg_unlockPanelIconSizeLimit
+                        ? i18n("Restore safe limit") // qmllint disable unqualified
+                        : i18n("Remove safe limits") // qmllint disable unqualified
+                    icon.name: page.cfg_unlockPanelIconSizeLimit ? "lock" : "document-decrypt"
+                    Accessible.name: text
+                    onClicked: {
+                        page.cfg_unlockPanelIconSizeLimit = !page.cfg_unlockPanelIconSizeLimit
+                        if (!page.cfg_unlockPanelIconSizeLimit && iconSizeSlider.value > page.safePanelIconSizeMax) {
+                            iconSizeSlider.value = page.safePanelIconSizeMax
+                        }
+                    }
+
+                }
+            }
+
+            // Virtual desktop visibility control.
+            RowLayout {
+                Kirigami.FormData.label: i18n("Desktop visibility:") // qmllint disable unqualified
+                Layout.maximumWidth: page.contentWidthHint
+
+                Controls.ComboBox {
+                    id: desktopModeCombo
+                    Layout.preferredWidth: page.selectorWidthHint
+                    Layout.maximumWidth: page.selectorWidthHint
+                    textRole: "text"
+                    valueRole: "value"
+                    model: [
+                        { "text": i18n("All desktops"), "value": "all" }, // qmllint disable unqualified
+                        { "text": i18n("Single desktop"), "value": "single" } // qmllint disable unqualified
+                    ]
+
+                    currentIndex: Math.max(0, indexOfValue(page.cfg_virtualDesktopMode))
+                    onActivated: {
+                        page.cfg_virtualDesktopMode = currentValue
+                        if (currentValue === "single"
+                                && page.cfg_targetVirtualDesktop === ""
+                                && page.defaultTargetVirtualDesktopId !== "") {
+                            page.cfg_targetVirtualDesktop = page.defaultTargetVirtualDesktopId
+                        }
+                    }
+
+                }
+            }
+
+            // Target virtual desktop selector.
+            RowLayout {
+                Kirigami.FormData.label: i18n("Target desktop:") // qmllint disable unqualified
+                visible: page.cfg_virtualDesktopMode === "single"
+                Layout.maximumWidth: page.contentWidthHint
+
+                Controls.ComboBox {
+                    id: desktopCombo
+                    Layout.preferredWidth: page.selectorWidthHint
+                    Layout.maximumWidth: page.selectorWidthHint
+                    textRole: "name"
+                    valueRole: "id"
+                    model: page.virtualDesktopModel
+                    enabled: count > 0
+                    currentIndex: {
+                        if (count === 0) {
+                            return -1
+                        }
+                        var targetDesktopId = page.cfg_targetVirtualDesktop || page.defaultTargetVirtualDesktopId
+                        return indexOfValue(targetDesktopId)
+                    }
+                    onActivated: {
+                        page.cfg_targetVirtualDesktop = currentValue
+                    }
+
+                }
+            }
+
+            Kirigami.InlineMessage {
+                Kirigami.FormData.isSection: true
+                Layout.fillWidth: true
+                Layout.maximumWidth: page.contentWidthHint
+                visible: page.cfg_virtualDesktopMode === "single"
+                    && (page.virtualDesktopModel.length === 0 || !page.targetVirtualDesktopAvailable)
+                type: Kirigami.MessageType.Warning
+                text: page.virtualDesktopModel.length === 0
+                    ? i18n("No virtual desktops were found.") // qmllint disable unqualified
+                    : i18n("The selected desktop no longer exists. Choose another desktop.") // qmllint disable unqualified
+            }
+        }
+
+        // Extras tab: secondary features kept out of the dock settings.
+        RecentApplicationsSettings {
+            id: recentApplicationsSettings
+            Layout.fillWidth: true
+            Layout.preferredHeight: generalTabs.currentIndex === 1 ? implicitHeight : 0
+            clip: true
+            enabled: generalTabs.currentIndex === 1
+            Accessible.ignored: generalTabs.currentIndex !== 1
+            selectorWidth: page.selectorWidthHint
+            contentWidth: page.contentWidthHint
+        }
+    }
+}

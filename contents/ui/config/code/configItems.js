@@ -1,0 +1,1583 @@
+.pragma library
+.import "../../../code/separatorAppearance.js" as SeparatorAppearance
+
+function clone(value) {
+    return JSON.parse(JSON.stringify(value))
+}
+
+function defaultName(name, key, translate) {
+    if (!name || name === key) {
+        return translate(key)
+    }
+    var translated = translate(name)
+    return translated === name ? name : translated
+}
+
+function flatpakAppIdFromCommand(command) {
+    var parts = String(command || "").split(/\s+/)
+    for (var index = 0; index < parts.length; index++) {
+        var executable = parts[index].replace(/^['"]|['"]$/g, "")
+        var slash = executable.lastIndexOf("/")
+        var executableName = slash >= 0 ? executable.substring(slash + 1) : executable
+        if (executableName === "gtk-launch" && index < parts.length - 1) {
+            var launcher = parts[index + 1].replace(/^['"]|['"]$/g, "")
+            launcher = launcher.replace(/^applications:/, "")
+            launcher = launcher.replace(/\.desktop$/, "")
+            return /^[A-Za-z0-9][A-Za-z0-9_.-]*\.[A-Za-z0-9_.-]+$/.test(launcher) ? launcher : ""
+        }
+        if (index >= parts.length - 1) {
+            continue
+        }
+        var subcommand = parts[index + 1].replace(/^['"]|['"]$/g, "")
+        if (executableName !== "flatpak" || subcommand !== "run") {
+            continue
+        }
+
+        for (var runIndex = index + 2; runIndex < parts.length; runIndex++) {
+            var part = parts[runIndex].replace(/^['"]|['"]$/g, "")
+            if (part.length === 0 || part.indexOf("-") === 0) {
+                continue
+            }
+            return /^[A-Za-z0-9][A-Za-z0-9_.-]*\.[A-Za-z0-9_.-]+$/.test(part) ? part : ""
+        }
+    }
+    return ""
+}
+
+function normalizedApplicationId(value) {
+    var text = String(value || "").trim()
+    text = text.replace(/^applications:/, "")
+    text = text.replace(/\.desktop$/, "")
+    return text
+}
+
+function applicationIdForCommand(command) {
+    var parts = String(command || "").split(/\s+/)
+    for (var index = 0; index < parts.length; index++) {
+        var executable = parts[index].replace(/^['"]|['"]$/g, "")
+        var slash = executable.lastIndexOf("/")
+        var executableName = slash >= 0 ? executable.substring(slash + 1) : executable
+        if (executableName === "gtk-launch" && index < parts.length - 1) {
+            return normalizedApplicationId(parts[index + 1].replace(/^['"]|['"]$/g, ""))
+        }
+        if (index < parts.length - 1 && executableName === "flatpak"
+                && parts[index + 1].replace(/^['"]|['"]$/g, "") === "run") {
+            for (var runIndex = index + 2; runIndex < parts.length; runIndex++) {
+                var part = parts[runIndex].replace(/^['"]|['"]$/g, "")
+                if (part.length === 0 || part.indexOf("-") === 0) {
+                    continue
+                }
+                return normalizedApplicationId(part)
+            }
+        }
+        if (executableName.length > 0) {
+            return normalizedApplicationId(executableName)
+        }
+    }
+    return ""
+}
+
+function isFlatpakLikeIconName(name) {
+    var text = String(name || "").toLowerCase()
+    return text.indexOf("org.") === 0 || text.indexOf("com.") === 0 || text.indexOf("io.") === 0
+        || text.indexOf("net.") === 0 || text.indexOf("dev.") === 0 || text.indexOf("app.") === 0
+        || text.indexOf("page.") === 0 || text.indexOf("md.") === 0
+}
+
+function iconValueForName(name) {
+    var text = String(name || "")
+    if (text.length === 0) {
+        return text
+    }
+    return text
+}
+
+function iconPreviewSource(name) {
+    var text = String(name || "")
+    if (text.indexOf("/") === 0) {
+        return "file://" + text
+    }
+    return text.length === 0 ? "application-x-executable" : text
+}
+
+function iconValueForCommand(command) {
+    var appId = applicationIdForCommand(command)
+    return appId.length > 0 ? iconValueForName(appId) : ""
+}
+
+function appIconWithCommandFallback(icon, command) {
+    var text = String(icon || "")
+    if (text.length > 0 && text !== "application-x-executable") {
+        return text
+    }
+    return iconValueForCommand(command) || text || "application-x-executable"
+}
+
+function syncAppIdentity(item, command, storageId, appId) {
+    var normalizedStorageId = normalizedApplicationId(storageId || "")
+    var inferredAppId = normalizedApplicationId(appId || "")
+    var commandAppId = applicationIdForCommand(command || "")
+
+    if (normalizedStorageId.length > 0) {
+        item.storageId = storageId
+        item.appId = normalizedStorageId
+        return
+    }
+
+    delete item.storageId
+    item.appId = inferredAppId.length > 0 ? inferredAppId : commandAppId
+}
+
+function commandStartsWith(command, executable) {
+    var text = String(command || "").trim()
+    if (text.length === 0) {
+        return false
+    }
+    var parts = text.split(/\s+/)
+    if (parts.length === 0) {
+        return false
+    }
+    var first = parts[0].replace(/^['"]|['"]$/g, "")
+    var slash = first.lastIndexOf("/")
+    var executableName = slash >= 0 ? first.substring(slash + 1) : first
+    return executableName === executable
+}
+
+function appActionPreset(command, storageId, appId) {
+    var commandId = normalizedApplicationId(applicationIdForCommand(command || ""))
+    var normalizedStorageId = normalizedApplicationId(storageId || "")
+    var normalizedAppId = normalizedApplicationId(appId || "")
+    var identities = [normalizedStorageId, normalizedAppId, commandId]
+
+    function hasIdentity(candidates) {
+        for (var candidateIndex = 0; candidateIndex < candidates.length; candidateIndex++) {
+            var candidate = normalizedApplicationId(candidates[candidateIndex])
+            if (candidate.length === 0) {
+                continue
+            }
+            for (var identityIndex = 0; identityIndex < identities.length; identityIndex++) {
+                if (identities[identityIndex] === candidate) {
+                    return true
+                }
+            }
+        }
+        return false
+    }
+
+    if (hasIdentity(["firefox", "org.mozilla.firefox"])) {
+        return {
+            "baseCommand": commandStartsWith(command, "flatpak") ? "flatpak run org.mozilla.firefox" : "firefox",
+            "actions": [
+                { "name": "New window", "icon": "window-new", "args": "--new-window" },
+                { "name": "New private window", "icon": "view-private", "args": "--private-window" }
+            ]
+        }
+    }
+
+    if (hasIdentity(["org.kde.konsole", "konsole"])) {
+        return {
+            "baseCommand": commandStartsWith(command, "flatpak") ? "flatpak run org.kde.konsole" : "konsole",
+            "actions": [
+                { "name": "New window", "icon": "window-new", "args": "--new-window" },
+                { "name": "New tab", "icon": "tab-new", "args": "--new-tab" }
+            ]
+        }
+    }
+
+    if (hasIdentity(["org.kde.dolphin", "dolphin"])) {
+        return {
+            "baseCommand": commandStartsWith(command, "flatpak") ? "flatpak run org.kde.dolphin" : "dolphin",
+            "actions": [
+                { "name": "New window", "icon": "window-new", "args": "--new-window" },
+                { "name": "Home", "icon": "go-home", "args": "~" }
+            ]
+        }
+    }
+
+    return null
+}
+
+function suggestedActionsForApp(command, storageId, appId) {
+    var preset = appActionPreset(command, storageId, appId)
+    if (!preset || !(preset.actions instanceof Array) || preset.actions.length === 0) {
+        return []
+    }
+
+    var baseCommand = String(preset.baseCommand || "").trim()
+    if (baseCommand.length === 0) {
+        return []
+    }
+
+    var actions = []
+    for (var index = 0; index < preset.actions.length; index++) {
+        var template = preset.actions[index]
+        if (!template) {
+            continue
+        }
+
+        var suffix = String(template.args || "").trim()
+        var action = {
+            "name": template.name || "Custom action",
+            "icon": template.icon || "system-run",
+            "command": suffix.length > 0 ? (baseCommand + " " + suffix) : baseCommand
+        }
+        syncAppIdentity(action, action.command, "", "")
+        actions.push(action)
+    }
+    return actions
+}
+
+function maybeSeedSuggestedActions(item, command, storageId, appId) {
+    if (!item || (item.type || "app") !== "app" || item.actionsEnabled === false) {
+        return false
+    }
+    if (item.actions instanceof Array && item.actions.length > 0) {
+        return false
+    }
+
+    var actions = suggestedActionsForApp(command, storageId, appId)
+    if (actions.length === 0) {
+        return false
+    }
+
+    item.actions = actions
+    delete item.actionsEnabled
+    return true
+}
+
+function itemTitle(item, translate) {
+    if (!item) {
+        return ""
+    }
+    // Never show legacy stored names in the Items preview. The type key
+    // remains "punchimenu" to keep existing KConfig data compatible.
+    if (item.type === "punchimenu") {
+        return translate("OgerMenu")
+    }
+    if (item.type === "separator") {
+        return translate("Separator")
+    }
+    if (item.type === "dynamic-applications") {
+        return translate("Open applications")
+    }
+    if (item.type === "spacer") {
+        return translate("Spacer")
+    }
+    if (item.type === "clock") {
+        return defaultName(item.name, "Clock", translate)
+    }
+    if (item.type === "calendar") {
+        if (!item.name || item.name === "Calendar"
+                || item.name === "Calendar/Clock") {
+            return translate("Calendar/Clock")
+        }
+        return defaultName(item.name, "Calendar/Clock", translate)
+    }
+    if (item.type === "trash") {
+        return defaultName(item.name, "Trash", translate)
+    }
+    if (item.type === "folder") {
+        return defaultName(item.name, "Folder", translate)
+    }
+    if (item.type === "note") {
+        return defaultName(item.name, "Note", translate)
+    }
+    if (item.type === "media") {
+        return defaultName(item.name, "Media player", translate)
+    }
+    if (item.type === "control-center") {
+        return defaultName(item.name, "Control Center", translate)
+    }
+    return defaultName(item.name, "Application", translate)
+}
+
+function itemTypeTitle(type, translate) {
+    if (type === "separator") {
+        return translate("Separator")
+    }
+    if (type === "dynamic-applications") {
+        return translate("Open applications")
+    }
+    if (type === "spacer") {
+        return translate("Spacer")
+    }
+    if (type === "clock") {
+        return translate("Clock")
+    }
+    if (type === "calendar") {
+        return translate("Calendar/Clock")
+    }
+    if (type === "trash") {
+        return translate("Trash")
+    }
+    if (type === "folder") {
+        return translate("Folder")
+    }
+    if (type === "note") {
+        return translate("Note")
+    }
+    if (type === "media") {
+        return translate("Media player")
+    }
+    if (type === "control-center") {
+        return translate("Control Center")
+    }
+    return translate("Application")
+}
+
+function itemSubtitle(item, translate, translatePlural) {
+    if (!item) {
+        return ""
+    }
+    if (item.type === "app") {
+        return item.description || translate("Application")
+    }
+    if (item.type === "folder") {
+        return translatePlural("%1 application", "%1 applications", item.apps ? item.apps.length : 0)
+    }
+    if (item.type === "clock") {
+        return item.format || "HH:mm"
+    }
+    if (item.type === "calendar") {
+        return item.format || "ddd dd"
+    }
+    if (item.type === "trash") {
+        return translate("System item")
+    }
+    if (item.type === "note") {
+        return translate("Simple note")
+    }
+    if (item.type === "media") {
+        return item.defaultPlayerName
+            ? String(item.defaultPlayerName)
+            : translate("Automatically select the active player")
+    }
+    if (item.type === "control-center") {
+        return translate("System controls and notifications")
+    }
+    if (item.type === "dynamic-applications") {
+        return translate("Choose where open apps appear")
+    }
+    if (item.type === "spacer") {
+        return translate("%1 px", item.size || 24)
+    }
+    return item.type || ""
+}
+
+function itemIcon(item) {
+    if (!item) {
+        return "application-x-executable"
+    }
+    if (item.type === "folder") {
+        return item.icon || "folder"
+    }
+    if (item.type === "separator") {
+        return "draw-line"
+    }
+    if (item.type === "dynamic-applications") {
+        return "window-duplicate"
+    }
+    if (item.type === "spacer") {
+        return "distribute-horizontal-x"
+    }
+    if (item.type === "clock") {
+        return item.icon || "preferences-system-time"
+    }
+    if (item.type === "calendar") {
+        return item.icon || "x-office-calendar"
+    }
+    if (item.type === "trash") {
+        return item.icon || "user-trash"
+    }
+    if (item.type === "note") {
+        return !item.icon || item.icon === "note" ? "knotes" : item.icon
+    }
+    if (item.type === "media") {
+        return "emblem-music-symbolic"
+    }
+    if (item.type === "control-center") {
+        return item.icon || "preferences-system"
+    }
+    return item.icon || "application-x-executable"
+}
+
+function categoryIcon(category) {
+    var value = String(category || "").trim()
+    if (value === "Development") {
+        return "applications-development"
+    }
+    if (value === "Game") {
+        return "applications-games"
+    }
+    if (value === "AudioVideo") {
+        return "applications-multimedia"
+    }
+    if (value === "Network") {
+        return "applications-internet"
+    }
+    if (value === "Office") {
+        return "applications-office"
+    }
+    if (value === "System") {
+        return "applications-system"
+    }
+    if (value === "Utility") {
+        return "applications-utilities"
+    }
+    if (value === "Graphics") {
+        return "applications-graphics"
+    }
+    return "folder"
+}
+
+function itemModelRow(item, translate, translatePlural) {
+    return {
+        "title": itemTitle(item, translate),
+        "subtitle": itemSubtitle(item, translate, translatePlural),
+        "iconName": itemIcon(item)
+    }
+}
+
+function actionModelRow(action, fallbackIcon, translate) {
+    return {
+        "title": defaultName(action ? action.name : "", "New action", translate),
+        "subtitle": action && action.command ? action.command : translate("No command"),
+        "iconName": action && action.icon ? action.icon : (fallbackIcon || "application-x-executable")
+    }
+}
+
+function folderAppModelRow(app, fallbackIcon, translate) {
+    return {
+        "title": defaultName(app ? app.name : "", "Application", translate),
+        "subtitle": app && app.description ? app.description : translate("Application"),
+        "iconName": app && app.icon ? app.icon : (fallbackIcon || "application-x-executable")
+    }
+}
+
+function removeKeys(item, keys) {
+    for (var index = 0; index < keys.length; index++) {
+        delete item[keys[index]]
+    }
+}
+
+function pruneSeparatorAppearance(item) {
+    item.separatorAppearanceSource = SeparatorAppearance.sourceForItem(item)
+    var requestedStyle = item.separatorStyle === "pill"
+        ? "capsule"
+        : String(item.separatorStyle || "line")
+    var supportedStyles = [
+        "line", "dot", "square", "capsule", "star", "diamond", "ring",
+        "doubleLine", "chevron"
+    ]
+    item.separatorStyle = supportedStyles.indexOf(requestedStyle) >= 0
+        ? requestedStyle
+        : "line"
+    item.separatorThickness = Math.max(1, Math.min(16, Number(item.separatorThickness === undefined ? 2 : item.separatorThickness)))
+    item.separatorLengthRatio = Math.max(0.20, Math.min(1.0, Number(item.separatorLengthRatio === undefined ? 0.72 : item.separatorLengthRatio)))
+    item.separatorOpacity = Math.max(0.10, Math.min(1.0, Number(item.separatorOpacity === undefined ? 0.34 : item.separatorOpacity)))
+    item.separatorGlowEnabled = item.separatorGlowEnabled === true
+}
+
+function normalizedSeparatorAppearanceSource(item) {
+    return SeparatorAppearance.sourceForItem(item)
+}
+
+function pruneSeparator(item) {
+    delete item.actionPopupMaxVisibleRows
+    removeKeys(item, ["name", "icon", "command", "apps"])
+    pruneSeparatorAppearance(item)
+}
+
+function pruneDynamicApplications(item) {
+    delete item.actionPopupMaxVisibleRows
+    removeKeys(item, [
+        "icon", "command", "apps", "actions", "actionsEnabled",
+        "description", "storageId", "appId"
+    ])
+    item.type = "dynamic-applications"
+    item.name = "Open applications"
+    if (item.showSeparator === false) {
+        item.showSeparator = false
+    } else {
+        delete item.showSeparator
+    }
+    pruneSeparatorAppearance(item)
+}
+
+function pruneSpacer(item) {
+    delete item.actionPopupMaxVisibleRows
+    removeKeys(item, ["name", "icon", "command", "apps"])
+}
+
+function pruneClock(item) {
+    delete item.actionPopupMaxVisibleRows
+    removeKeys(item, ["icon", "command", "apps"])
+    if (item.mode === "analog") {
+        if (!item.analogCustomAppearance) {
+            removeKeys(item, ["analogAccentColor", "analogTickColor", "analogBorderColor", "analogFaceColor"])
+        }
+        return
+    }
+    removeKeys(item, [
+        "showSeconds", "analogCustomAppearance", "analogAccentColor",
+        "analogTickColor", "analogBorderColor", "analogFaceColor"
+    ])
+}
+
+// Effective value of the calendar options. `pruneCalendar` keeps the stored shape—it
+// always writes them—while these readers return the value a control shows, so the page
+// and the add dialog share one rule instead of one copy each.
+function normalizedCalendarTimeTextScale(value) {
+    return Math.max(0.75, Math.min(2.0, Number(value === undefined ? 1.0 : value)))
+}
+
+function normalizedCalendarDateTextScale(value) {
+    return Math.max(0.75, Math.min(2.0, Number(value === undefined ? 1.0 : value)))
+}
+
+function normalizedCalendarTextShadowsEnabled(value) {
+    return value !== false
+}
+
+function normalizedCalendarShowWeekNumbers(value) {
+    return value === undefined ? true : Boolean(value)
+}
+
+function normalizedCalendarPopupScale(value) {
+    return Math.max(0.5, Math.min(3.0, Number(value === undefined ? 1.0 : value)))
+}
+
+function pruneCalendar(item) {
+    delete item.actionPopupMaxVisibleRows
+    removeKeys(item, ["icon", "fontFamily", "mode", "showSeconds", "command", "apps", "width", "height", "backgroundColor", "accentColor", "borderColor", "radius", "textScale"])
+    item.timeTextScale = normalizedCalendarTimeTextScale(item.timeTextScale)
+    item.dateTextScale = normalizedCalendarDateTextScale(item.dateTextScale)
+    item.calendarTextShadowsEnabled =
+        normalizedCalendarTextShadowsEnabled(item.calendarTextShadowsEnabled)
+    item.showWeekNumbers = normalizedCalendarShowWeekNumbers(item.showWeekNumbers)
+    item.popupScale = normalizedCalendarPopupScale(item.popupScale)
+}
+
+function pruneTrash(item) {
+    delete item.actionPopupMaxVisibleRows
+    removeKeys(item, ["command", "apps"])
+}
+
+// Effective value of the trash switches: an element that never declared them keeps
+// both enabled, which is the rule a new item is created with. They live here so the
+// page and the add dialog read the same rule instead of one copy each.
+function normalizedTrashShowState(value) {
+    return value === undefined ? true : Boolean(value)
+}
+
+function normalizedTrashAcceptDrops(value) {
+    return value === undefined ? true : Boolean(value)
+}
+
+function pruneNote(item) {
+    delete item.actionPopupMaxVisibleRows
+    removeKeys(item, ["command", "apps", "actions", "actionsEnabled"])
+    item.name = item.name || "Note"
+    item.icon = !item.icon || item.icon === "note" ? "knotes" : item.icon
+    item.note = item.note || ""
+    item.popupWidth = Math.max(220, item.popupWidth || 360)
+    item.popupHeight = Math.max(160, item.popupHeight || 260)
+}
+
+// Effective value of the media options. `pruneMedia` keeps the stored shape—absent
+// means default—while these readers return the value a control shows, so the page
+// and the add dialog share one rule instead of one copy each.
+function normalizedMediaTextMode(value) {
+    var requestedMode = String(value || "automatic")
+    return requestedMode === "always" || requestedMode === "hidden"
+        ? requestedMode
+        : "automatic"
+}
+
+function normalizedMediaDisplayMode(value) {
+    return String(value || "normal") === "compact" ? "compact" : "normal"
+}
+
+function normalizedMediaAutoCollapseDelaySeconds(value) {
+    var requestedDelay = Number(value)
+    return Number.isFinite(requestedDelay)
+        ? Math.max(0, Math.min(30, Math.round(requestedDelay)))
+        : 3
+}
+
+function pruneMedia(item) {
+    const allowedVisibility = ["sound", "playing", "available", "always"]
+    const allowedAnimation = ["fade", "slide", "zoom", "none"]
+    const visibility = String(item.mediaIdleVisibility || "sound")
+    const entrance = String(item.mediaEntranceAnimation || "fade")
+    const background = String(item.mediaBackgroundStyle || "artwork")
+    if (visibility !== "sound" && allowedVisibility.indexOf(visibility) >= 0)
+        item.mediaIdleVisibility = visibility
+    else delete item.mediaIdleVisibility
+    if (entrance !== "fade" && allowedAnimation.indexOf(entrance) >= 0)
+        item.mediaEntranceAnimation = entrance
+    else delete item.mediaEntranceAnimation
+    if (background === "system") item.mediaBackgroundStyle = "system"
+    else delete item.mediaBackgroundStyle
+    for (const [key, defaultValue, maxValue] of [
+        ["mediaSoundShowDelayMs", 650, 3000],
+        ["mediaSoundHideDelayMs", 4000, 10000]
+    ]) {
+        const value = Number(item[key])
+        if (Number.isFinite(value)) {
+            const resolved = Math.max(key === "mediaSoundHideDelayMs" ? 4000 : 0, Math.min(maxValue, Math.round(value)))
+            if (resolved !== defaultValue) item[key] = resolved
+            else delete item[key]
+        } else delete item[key]
+    }
+    for (const key of ["mediaShowCover", "mediaShowTitle", "mediaShowControls",
+                       "mediaShowProgress", "mediaShowVolume"]) {
+        if (item[key] === false) item[key] = false
+        else delete item[key]
+    }
+    delete item.actionPopupMaxVisibleRows
+    removeKeys(item, [
+        "command", "apps", "actions", "actionsEnabled", "storageId", "appId",
+        "description"
+    ])
+    item.name = "Media player"
+    item.icon = "emblem-music-symbolic"
+    // The stored shape keeps only what differs from the default, and the value
+    // itself comes from the readers above.
+    var mediaTextMode = normalizedMediaTextMode(item.mediaTextMode)
+    if (mediaTextMode === "automatic") {
+        delete item.mediaTextMode
+    } else {
+        item.mediaTextMode = mediaTextMode
+    }
+    if (normalizedMediaDisplayMode(item.mediaDisplayMode) === "compact") {
+        item.mediaDisplayMode = "compact"
+    } else {
+        delete item.mediaDisplayMode
+    }
+    var autoCollapseDelaySeconds =
+        normalizedMediaAutoCollapseDelaySeconds(item.mediaAutoCollapseDelaySeconds)
+    if (autoCollapseDelaySeconds === 3) {
+        delete item.mediaAutoCollapseDelaySeconds
+    } else {
+        item.mediaAutoCollapseDelaySeconds = autoCollapseDelaySeconds
+    }
+    var storageId = String(item.defaultPlayerStorageId || "").trim().substring(0, 512)
+    if (storageId.length === 0) {
+        removeKeys(item, [
+            "defaultPlayerStorageId", "defaultPlayerAppId",
+            "defaultPlayerName", "defaultPlayerIcon", "openPlayerMinimized"
+        ])
+        return
+    }
+    item.defaultPlayerStorageId = storageId
+    item.defaultPlayerAppId = normalizedApplicationId(
+        item.defaultPlayerAppId || storageId).substring(0, 512)
+    item.defaultPlayerName = String(item.defaultPlayerName || storageId)
+        .trim().substring(0, 256)
+    item.defaultPlayerIcon = String(item.defaultPlayerIcon || "applications-multimedia")
+        .trim().substring(0, 512)
+    if (item.openPlayerMinimized !== true) {
+        delete item.openPlayerMinimized
+    }
+}
+
+function normalizedControlCenterMode(value) {
+    var availableModes = ["fullScreen", "floating"]
+    var requestedMode = String(value || "floating")
+    return availableModes.indexOf(requestedMode) >= 0
+        ? requestedMode
+        : "floating"
+}
+
+function pruneControlCenter(item) {
+    delete item.actionPopupMaxVisibleRows
+    removeKeys(item, [
+        "command", "apps", "actions", "actionsEnabled", "storageId", "appId",
+        "description"
+    ])
+    item.type = "control-center"
+    item.name = "Control Center"
+    item.icon = "preferences-system"
+    item.controlCenterMode = normalizedControlCenterMode(
+        item.controlCenterMode)
+}
+
+function normalizedPunchiMenuGridIconScalePercent(value) {
+    var requestedValue = Number(value)
+    if (!Number.isFinite(requestedValue)) {
+        return 100
+    }
+    return Math.max(75, Math.min(150, Math.round(requestedValue / 5) * 5))
+}
+
+function normalizedPunchiMenuFavoriteIconScalePercent(value) {
+    var requestedValue = Number(value)
+    if (!Number.isFinite(requestedValue)) {
+        return 100
+    }
+    return Math.max(75, Math.min(110, Math.round(requestedValue / 5) * 5))
+}
+
+function normalizedPunchiMenuNormalFolderMaximumColumns(value) {
+    var requestedValue = Number(value)
+    if (!Number.isFinite(requestedValue)) {
+        return 3
+    }
+    return Math.max(1, Math.min(3, Math.round(requestedValue)))
+}
+
+function normalizedPunchiMenuNormalFolderMaximumRows(value) {
+    var requestedValue = Number(value)
+    if (!Number.isFinite(requestedValue)) {
+        return 3
+    }
+    return Math.max(1, Math.min(3, Math.round(requestedValue)))
+}
+
+function normalizedPunchiMenuFullScreenFolderMaximumColumns(value) {
+    var requestedValue = Number(value)
+    if (!Number.isFinite(requestedValue)) {
+        return 5
+    }
+    return Math.max(1, Math.min(5, Math.round(requestedValue)))
+}
+
+function normalizedPunchiMenuFullScreenFolderMaximumRows(value) {
+    var requestedValue = Number(value)
+    if (!Number.isFinite(requestedValue)) {
+        return 5
+    }
+    return Math.max(1, Math.min(5, Math.round(requestedValue)))
+}
+
+function normalizedPunchiMenuFullScreenBackgroundOpacityPercent(value) {
+    var requestedValue = Number(value)
+    if (!Number.isFinite(requestedValue)) {
+        return 50
+    }
+    return Math.max(50, Math.min(100, Math.round(requestedValue / 5) * 5))
+}
+
+function normalizedPunchiMenuNormalBackgroundOpacityPercent(value) {
+    var requestedValue = Number(value)
+    if (!Number.isFinite(requestedValue)) {
+        return 75
+    }
+    return Math.max(50, Math.min(100, Math.round(requestedValue / 5) * 5))
+}
+
+function normalizedPunchiMenuNormalFloatingLabelVisibleCharacters(value) {
+    var requestedValue = Number(value)
+    if (!Number.isFinite(requestedValue)) {
+        return 10
+    }
+    return Math.max(6, Math.min(20, Math.round(requestedValue)))
+}
+
+function normalizedPunchiMenuNormalFloatingTextShadowPercent(value) {
+    var requestedValue = Number(value)
+    if (!Number.isFinite(requestedValue)) {
+        return 25
+    }
+    return Math.max(0, Math.min(100,
+        Math.round(requestedValue / 5) * 5))
+}
+
+function normalizedPunchiMenuCompactBackgroundOpacityPercent(value) {
+    var requestedValue = Number(value)
+    if (!Number.isFinite(requestedValue)) {
+        return 85
+    }
+    return Math.max(50, Math.min(100, Math.round(requestedValue / 5) * 5))
+}
+
+function normalizedPunchiMenuNormalWidthPercent(value) {
+    var requestedValue = Number(value)
+    if (!Number.isFinite(requestedValue)) {
+        return 40
+    }
+    return Math.max(35, Math.min(40, Math.round(requestedValue / 5) * 5))
+}
+
+function normalizedPunchiMenuNormalHeightPercent(value) {
+    var requestedValue = Number(value)
+    if (!Number.isFinite(requestedValue)) {
+        return 45
+    }
+    return Math.max(40, Math.min(45, Math.round(requestedValue / 5) * 5))
+}
+
+function normalizedPunchiMenuNormalPanelDistancePercent(value, legacyGap) {
+    var requestedValue = Number(value)
+    if (Number.isFinite(requestedValue)) {
+        return Math.max(0, Math.min(100,
+            Math.round(requestedValue / 5) * 5))
+    }
+
+    var requestedLegacyGap = Number(legacyGap)
+    if (Number.isFinite(requestedLegacyGap)) {
+        var safeLegacyGap = Math.max(0, Math.min(32,
+            requestedLegacyGap))
+        return Math.max(0, Math.min(100,
+            Math.round((safeLegacyGap * 100 / 32) / 5) * 5))
+    }
+    return 25
+}
+
+function normalizedPunchiMenuMode(value) {
+    var availableModes = ["fullScreen", "normal", "compact"]
+    var requestedMode = String(value || "normal")
+    return availableModes.indexOf(requestedMode) >= 0
+        ? requestedMode
+        : "normal"
+}
+
+function normalizedPunchiMenuHoverAnimation(value) {
+    var availableAnimations = ["none", "individual", "pulse", "bounce"]
+    var requestedAnimation = String(value || "pulse")
+    return availableAnimations.indexOf(requestedAnimation) >= 0
+        ? requestedAnimation
+        : "pulse"
+}
+
+function normalizedPunchiMenuFullScreenCloseButtonPosition(value) {
+    return String(value || "right") === "left"
+        ? "left"
+        : "right"
+}
+
+function normalizedPunchiMenuFullScreenApplicationOrder(value,
+        legacyAlphabetical) {
+    var availableModes = ["manual", "alphabetical", "categories"]
+    var requestedMode = String(value || "")
+    if (availableModes.indexOf(requestedMode) >= 0) {
+        return requestedMode
+    }
+    return legacyAlphabetical === true ? "alphabetical" : "manual"
+}
+
+function normalizedPunchiMenuNormalPlacementMode(value) {
+    return String(value || "anchored") === "centered"
+        ? "centered"
+        : "anchored"
+}
+
+function normalizedPunchiMenuIcon(value) {
+    var requestedIcon = String(value || "").trim()
+    if (requestedIcon.length === 0 || requestedIcon.length > 2048
+            || /[\u0000-\u001f\u007f]/.test(requestedIcon)) {
+        return "start-here-kde"
+    }
+    return requestedIcon
+}
+
+function normalizedPunchiMenuHiddenApplicationIds(value) {
+    var source = value instanceof Array ? value : []
+    var result = []
+    var seen = {}
+    var maximumEntries = 512
+    for (var index = 0; index < source.length && result.length < maximumEntries; index++) {
+        var storageId = String(source[index] || "").trim()
+        if (storageId.length === 0 || storageId.length > 512
+                || /[\u0000-\u001f\u007f]/.test(storageId)) {
+            continue
+        }
+        var comparisonKey = "#" + storageId.toLowerCase()
+        if (seen[comparisonKey] === true) {
+            continue
+        }
+        seen[comparisonKey] = true
+        result.push(storageId)
+    }
+    return result
+}
+
+function prunePunchiMenu(item) {
+    delete item.actionPopupMaxVisibleRows
+    removeKeys(item, [
+        "command", "apps", "actions", "actionsEnabled", "storageId", "appId",
+        "description"
+    ])
+    item.name = "OgerMenu"
+    item.icon = normalizedPunchiMenuIcon(item.icon)
+    item.menuMode = normalizedPunchiMenuMode(item.menuMode)
+    item.performanceMode = ["automatic", "economy", "visual"].includes(
+        String(item.performanceMode || "")) ? item.performanceMode : "automatic"
+    if (item.performanceMode === "automatic") {
+        delete item.performanceMode
+    }
+    const requestedThreshold = Number(item.performanceThreshold)
+    const performanceThreshold = Number.isFinite(requestedThreshold)
+        && requestedThreshold > 0 ? Math.round(requestedThreshold) : 120
+    item.performanceThreshold = Math.max(40, Math.min(400, performanceThreshold))
+    if (item.performanceThreshold === 120) {
+        delete item.performanceThreshold
+    }
+    item.hoverAnimation = normalizedPunchiMenuHoverAnimation(
+        item.hoverAnimation)
+    if (item.hoverAnimation === "pulse") {
+        delete item.hoverAnimation
+    }
+    if (item.showApplicationLabels !== false) {
+        delete item.showApplicationLabels
+    } else {
+        item.showApplicationLabels = false
+    }
+    if (item.sortApplicationsAlphabetically === true) {
+        item.sortApplicationsAlphabetically = true
+    } else {
+        delete item.sortApplicationsAlphabetically
+    }
+    item.fullScreenApplicationOrder =
+        normalizedPunchiMenuFullScreenApplicationOrder(
+            item.fullScreenApplicationOrder,
+            item.sortApplicationsAlphabetically === true)
+    item.normalPlacementMode = normalizedPunchiMenuNormalPlacementMode(
+        item.normalPlacementMode)
+    item.gridIconScalePercent = normalizedPunchiMenuGridIconScalePercent(
+        item.gridIconScalePercent)
+    item.favoriteIconScalePercent = normalizedPunchiMenuFavoriteIconScalePercent(
+        item.favoriteIconScalePercent)
+    item.normalFolderMaximumColumns =
+        normalizedPunchiMenuNormalFolderMaximumColumns(
+            item.normalFolderMaximumColumns)
+    item.normalFolderMaximumRows = normalizedPunchiMenuNormalFolderMaximumRows(
+        item.normalFolderMaximumRows)
+    item.fullScreenFolderMaximumColumns =
+        normalizedPunchiMenuFullScreenFolderMaximumColumns(
+            item.fullScreenFolderMaximumColumns)
+    item.fullScreenFolderMaximumRows =
+        normalizedPunchiMenuFullScreenFolderMaximumRows(
+            item.fullScreenFolderMaximumRows)
+    if (item.fullScreenBlurEnabled !== false) {
+        delete item.fullScreenBlurEnabled
+    } else {
+        item.fullScreenBlurEnabled = false
+    }
+    item.fullScreenBackgroundOpacityPercent =
+        normalizedPunchiMenuFullScreenBackgroundOpacityPercent(
+            item.fullScreenBackgroundOpacityPercent)
+    if (item.normalBlurEnabled !== false) {
+        delete item.normalBlurEnabled
+    } else {
+        item.normalBlurEnabled = false
+    }
+    item.normalBackgroundOpacityPercent =
+        normalizedPunchiMenuNormalBackgroundOpacityPercent(
+            item.normalBackgroundOpacityPercent)
+    if (item.normalFloatingLabelShorteningEnabled !== false) {
+        delete item.normalFloatingLabelShorteningEnabled
+    } else {
+        item.normalFloatingLabelShorteningEnabled = false
+    }
+    item.normalFloatingLabelVisibleCharacters =
+        normalizedPunchiMenuNormalFloatingLabelVisibleCharacters(
+            item.normalFloatingLabelVisibleCharacters)
+    if (item.normalFloatingTextShadowsEnabled !== false) {
+        delete item.normalFloatingTextShadowsEnabled
+    } else {
+        item.normalFloatingTextShadowsEnabled = false
+    }
+    item.normalFloatingTextShadowPercent =
+        normalizedPunchiMenuNormalFloatingTextShadowPercent(
+            item.normalFloatingTextShadowPercent)
+    if (item.showDistributionName !== false) {
+        delete item.showDistributionName
+    } else {
+        item.showDistributionName = false
+    }
+    if (item.showPageNavigationArrows !== false) {
+        delete item.showPageNavigationArrows
+    } else {
+        item.showPageNavigationArrows = false
+    }
+    item.fullScreenCloseButtonPosition =
+        normalizedPunchiMenuFullScreenCloseButtonPosition(
+            item.fullScreenCloseButtonPosition)
+    if (item.fullScreenCloseButtonPosition === "right") {
+        delete item.fullScreenCloseButtonPosition
+    }
+    item.hiddenApplicationIds = normalizedPunchiMenuHiddenApplicationIds(
+        item.hiddenApplicationIds)
+    if (item.hiddenApplicationIds.length === 0) {
+        delete item.hiddenApplicationIds
+    }
+    item.normalWidthPercent = normalizedPunchiMenuNormalWidthPercent(
+        item.normalWidthPercent)
+    item.normalHeightPercent = normalizedPunchiMenuNormalHeightPercent(
+        item.normalHeightPercent)
+    item.normalPanelDistancePercent =
+        normalizedPunchiMenuNormalPanelDistancePercent(
+            item.normalPanelDistancePercent, item.normalPanelGap)
+    delete item.normalPanelGap
+    if (item.normalShowCategories !== false) {
+        delete item.normalShowCategories
+    } else {
+        item.normalShowCategories = false
+    }
+    if (item.normalCategoryGrouping !== true) {
+        delete item.normalCategoryGrouping
+    } else {
+        item.normalCategoryGrouping = true
+    }
+    if (item.compactBlurEnabled !== false) {
+        delete item.compactBlurEnabled
+    } else {
+        item.compactBlurEnabled = false
+    }
+    item.compactBackgroundOpacityPercent =
+        normalizedPunchiMenuCompactBackgroundOpacityPercent(
+            item.compactBackgroundOpacityPercent)
+    if (item.compactShowQuickLaunchers !== false) {
+        delete item.compactShowQuickLaunchers
+    } else {
+        item.compactShowQuickLaunchers = false
+    }
+}
+
+function pruneApp(item) {
+    removeKeys(item, ["apps"])
+    if (item.actionPopupMaxVisibleRows === undefined
+            || !Number.isFinite(Number(item.actionPopupMaxVisibleRows))) {
+        delete item.actionPopupMaxVisibleRows
+    } else {
+        item.actionPopupMaxVisibleRows = Math.max(1, Math.min(12,
+            Math.round(Number(item.actionPopupMaxVisibleRows))))
+    }
+    if (!item.storageId || String(item.storageId).trim().length === 0) {
+        delete item.storageId
+    }
+    if (!item.appId || String(item.appId).trim().length === 0) {
+        delete item.appId
+    } else {
+        item.appId = normalizedApplicationId(item.appId)
+    }
+}
+
+function pruneFolder(item) {
+    if (!/^#[0-9a-fA-F]{6}$/.test(String(item.folderAccentColor || "")))
+        delete item.folderAccentColor
+    if (item.browseSubfolders !== true) {
+        delete item.browseSubfolders
+    }
+    delete item.actionPopupMaxVisibleRows
+    removeKeys(item, ["command", "actions", "actionsEnabled"])
+    removeKeys(item, ["radialBackground", "radialIconSlots", "radialDistance", "fanCenterDistance"])
+    item.apps = item.apps instanceof Array ? item.apps : []
+    item.layout = item.layout === "list" || item.layout === "detailed"
+            || item.layout === "fan" ? item.layout : "grid"
+    item.columns = Math.max(0, item.columns || 0)
+    item.rows = Math.max(0, item.rows || 0)
+    item.innerIconSize = Math.max(16, item.innerIconSize || 48)
+    item.showLabels = item.showLabels === undefined ? true : item.showLabels
+    item.closeOnLaunch = item.closeOnLaunch === undefined ? true : item.closeOnLaunch
+    for (var index = 0; index < item.apps.length; index++) {
+        item.apps[index].type = "app"
+        item.apps[index].name = item.apps[index].name || "Application"
+        item.apps[index].icon = item.apps[index].icon || "application-x-executable"
+        item.apps[index].command = item.apps[index].command || ""
+        pruneApp(item.apps[index])
+    }
+}
+
+function setFolderLayout(items, targetIndex, layout) {
+    var source = items instanceof Array ? items : []
+    var index = Number(targetIndex)
+    var nextLayout = String(layout || "")
+    if (!Number.isInteger(index) || index < 0 || index >= source.length) {
+        return { "items": source, "changed": false, "status": "invalid-target" }
+    }
+    if (nextLayout !== "grid" && nextLayout !== "list"
+            && nextLayout !== "detailed" && nextLayout !== "fan") {
+        return { "items": source, "changed": false, "status": "invalid-layout" }
+    }
+
+    var currentFolder = source[index]
+    if (!currentFolder || currentFolder.type !== "folder") {
+        return { "items": source, "changed": false, "status": "invalid-target" }
+    }
+    var currentLayout = currentFolder.layout === "list"
+            || currentFolder.layout === "detailed"
+            || currentFolder.layout === "fan"
+        ? currentFolder.layout : "grid"
+    if (currentLayout === nextLayout) {
+        return { "items": source, "changed": false, "status": "unchanged" }
+    }
+
+    var nextItems = clone(source)
+    nextItems[index].layout = nextLayout
+    return { "items": nextItems, "changed": true, "status": "updated" }
+}
+
+function newItem(type, defaultTrashEmptySound) {
+    if (type === "dynamic-applications") {
+        return {
+            "type": "dynamic-applications",
+            "name": "Open applications"
+        }
+    }
+    if (type === "separator") {
+        return { "type": "separator" }
+    }
+    if (type === "spacer") {
+        return { "type": "spacer", "size": 32 }
+    }
+    if (type === "clock") {
+        return {
+            "type": "clock",
+            "name": "Clock",
+            "icon": "preferences-system-time",
+            "mode": "digital",
+            "format": "HH:mm",
+            "fontFamily": "",
+            "color": "",
+            "width": 0,
+            "textScale": 1.15
+        }
+    }
+    if (type === "calendar") {
+        return {
+            "type": "calendar",
+            "name": "Calendar",
+            "icon": "x-office-calendar",
+            "color": "",
+            "textScale": 1.15,
+            "popupScale": 1.0,
+            "calendarDisplayMode": "tile",
+            "calendarTextShadowsEnabled": true,
+            "textShowWeekday": true,
+            "textShowDay": true,
+            "textShowMonth": true,
+            "showWeekday": true,
+            "showWeekNumbers": true
+        }
+    }
+    if (type === "trash") {
+        return {
+            "type": "trash",
+            "name": "Trash",
+            "icon": "user-trash",
+            "fullIcon": "user-trash-full",
+            "emptySound": defaultTrashEmptySound,
+            "showState": true,
+            "acceptDrops": true
+        }
+    }
+    if (type === "note") {
+        return {
+            "type": "note",
+            "name": "Note",
+            "icon": "knotes",
+            "note": "",
+            "popupWidth": 360,
+            "popupHeight": 260
+        }
+    }
+    if (type === "punchimenu") {
+        return {
+            "type": "punchimenu",
+            "name": "OgerMenu",
+            "icon": "start-here-kde",
+            "menuMode": "normal",
+            "normalPlacementMode": "anchored",
+            "gridIconScalePercent": 100,
+            "favoriteIconScalePercent": 100,
+            "normalFolderMaximumColumns": 3,
+            "normalFolderMaximumRows": 3,
+            "fullScreenFolderMaximumColumns": 5,
+            "fullScreenFolderMaximumRows": 5,
+            "fullScreenBackgroundOpacityPercent": 50,
+            "normalBackgroundOpacityPercent": 75,
+            "normalFloatingLabelVisibleCharacters": 10,
+            "normalFloatingTextShadowPercent": 25,
+            "normalWidthPercent": 40,
+            "normalHeightPercent": 45,
+            "normalPanelDistancePercent": 25
+        }
+    }
+    if (type === "media") {
+        return {
+            "type": "media",
+            "name": "Media player",
+            "icon": "emblem-music-symbolic"
+        }
+    }
+    if (type === "control-center") {
+        return {
+            "type": "control-center",
+            "name": "Control Center",
+            "icon": "preferences-system",
+            "controlCenterMode": "floating"
+        }
+    }
+    if (type === "folder") {
+        return {
+            "type": "folder",
+            "name": "Folder",
+            "icon": "folder",
+            "apps": [],
+            "layout": "grid",
+            "columns": 3,
+            "rows": 0,
+            "innerIconSize": 48,
+            "showLabels": true,
+            "closeOnLaunch": true,
+            "sourceType": "manual",
+            "sourcePath": "",
+            "sourceCategory": "Development"
+        }
+    }
+    return {
+        "type": "app",
+        "name": "New App",
+        "icon": "application-x-executable",
+        "command": ""
+    }
+}
+
+function newAction(item) {
+    var nextAction = {
+        "name": "New action",
+        "icon": item && item.icon ? item.icon : "application-x-executable",
+        "command": item && item.command ? item.command : ""
+    }
+    syncAppIdentity(nextAction, nextAction.command, "", "")
+    return nextAction
+}
+
+function newContainerApp(item) {
+    var nextApp = {
+        "type": "app",
+        "name": "New App",
+        "icon": item && item.icon ? item.icon : "application-x-executable",
+        "command": item && item.command ? item.command : ""
+    }
+    syncAppIdentity(nextApp, nextApp.command, "", "")
+    return nextApp
+}
+
+// R62.6: the Plasma configuration shell may reconstruct the Itens page on
+// every category switch. Reuse only a *successful, byte-identical* parse.
+// The returned copy is independent so changes made in a KCM draft cannot
+// affect the next visit, another plasmoid, or Apply/Cancel semantics.
+var lastPreviewJson = null
+var lastPreviewParsed = null
+
+function parseJsonArrayForPreview(text) {
+    const source = String(text || "")
+    if (lastPreviewParsed !== null && lastPreviewJson === source)
+        return { ok: true, items: clone(lastPreviewParsed), error: "" }
+
+    const result = parseJsonArray(source)
+    // Keep only one bounded snapshot; huge or invalid inputs are never cached.
+    if (result.ok && source.length <= 1024 * 1024) {
+        lastPreviewJson = source
+        lastPreviewParsed = clone(result.items)
+    } else {
+        lastPreviewJson = null
+        lastPreviewParsed = null
+    }
+    return result
+}
+
+function parseJsonArray(text) {
+    var parsed = JSON.parse(text)
+    if (!(parsed instanceof Array)) {
+        return {
+            "ok": false,
+            "items": [],
+            "error": "array"
+        }
+    }
+    return {
+        "ok": true,
+        "items": parsed,
+        "error": ""
+    }
+}
+
+function setActionsEnabled(items, selectedIndex, enabled) {
+    var nextItems = clone(items)
+    var item = nextItems[selectedIndex]
+    item.type = item.type || "app"
+    if (enabled) {
+        item.actions = item.actions instanceof Array ? item.actions : []
+        delete item.actionsEnabled
+    } else {
+        item.actionsEnabled = false
+    }
+    return nextItems
+}
+
+function setItemMode(items, selectedIndex, mode) {
+    var nextItems = clone(items)
+    var item = nextItems[selectedIndex]
+    if (mode === "separator") {
+        item.type = "separator"
+        pruneSeparator(item)
+    } else if (mode === "spacer") {
+        item.type = "spacer"
+        item.size = item.size || 32
+        pruneSpacer(item)
+    } else if (mode === "container") {
+        item.type = "folder"
+        item.name = item.name || "Folder"
+        item.icon = item.icon || "folder"
+        item.apps = item.apps instanceof Array ? item.apps : []
+        item.layout = item.layout || "grid"
+        item.columns = item.columns === undefined ? 3 : item.columns
+        item.rows = item.rows === undefined ? 0 : item.rows
+        item.innerIconSize = item.innerIconSize || 48
+        item.showLabels = item.showLabels === undefined ? true : item.showLabels
+        item.closeOnLaunch = item.closeOnLaunch === undefined ? true : item.closeOnLaunch
+        item.sourceType = item.sourceType || "manual"
+        item.sourcePath = item.sourcePath || ""
+        item.sourceCategory = item.sourceCategory || "Development"
+        pruneFolder(item)
+    } else if (mode === "note") {
+        item.type = "note"
+        item.name = item.name || "Note"
+        item.icon = !item.icon || item.icon === "note" ? "knotes" : item.icon
+        item.note = item.note || ""
+        item.popupWidth = item.popupWidth || 360
+        item.popupHeight = item.popupHeight || 260
+        pruneNote(item)
+    } else {
+        item.type = "app"
+        item.name = item.name || "Application"
+        item.icon = item.icon || "application-x-executable"
+        item.command = item.command || ""
+        pruneApp(item)
+    }
+    return nextItems
+}
+
+function addAction(items, selectedIndex) {
+    var nextItems = clone(items)
+    nextItems[selectedIndex].actions = nextItems[selectedIndex].actions instanceof Array ? nextItems[selectedIndex].actions : []
+    nextItems[selectedIndex].actions.push(newAction(nextItems[selectedIndex]))
+    return {
+        "items": nextItems,
+        "selectedActionIndex": nextItems[selectedIndex].actions.length - 1
+    }
+}
+
+function removeAction(items, selectedIndex, selectedActionIndex) {
+    var nextItems = clone(items)
+    nextItems[selectedIndex].actions.splice(selectedActionIndex, 1)
+    return {
+        "items": nextItems,
+        "selectedActionIndex": Math.min(selectedActionIndex, nextItems[selectedIndex].actions.length - 1)
+    }
+}
+
+function moveAction(items, selectedIndex, selectedActionIndex, target) {
+    var nextItems = clone(items)
+    var action = nextItems[selectedIndex].actions.splice(selectedActionIndex, 1)[0]
+    nextItems[selectedIndex].actions.splice(target, 0, action)
+    return {
+        "items": nextItems,
+        "selectedActionIndex": target
+    }
+}
+
+function removeItem(items, selectedIndex) {
+    var nextItems = clone(items)
+    // R59: defense in depth for every configuration deletion path.
+    if (nextItems[selectedIndex]
+            && String(nextItems[selectedIndex].type || "") === "punchimenu") {
+        return {"items": nextItems, "selectedIndex": selectedIndex}
+    }
+    nextItems.splice(selectedIndex, 1)
+    return {
+        "items": nextItems,
+        "selectedIndex": Math.min(selectedIndex, nextItems.length - 1)
+    }
+}
+
+function itemRemovalImpact(item) {
+    var removesOpenApplications = !!item
+        && String(item.type || "") === "dynamic-applications"
+    return {
+        "confirmationRequired": removesOpenApplications,
+        "disableActiveTasks": removesOpenApplications
+    }
+}
+
+function itemAdditionImpact(type) {
+    return {
+        "enableActiveTasks": String(type || "") === "dynamic-applications"
+    }
+}
+
+function moveItem(items, selectedIndex, target) {
+    var nextItems = clone(items)
+    var item = nextItems.splice(selectedIndex, 1)[0]
+    nextItems.splice(target, 0, item)
+    return {
+        "items": nextItems,
+        "selectedIndex": target
+    }
+}
+
+function applyAction(items, selectedIndex, selectedActionIndex, name, icon, command) {
+    var nextItems = clone(items)
+    var action = nextItems[selectedIndex].actions[selectedActionIndex]
+    action.name = name || "New action"
+    action.icon = icon || nextItems[selectedIndex].icon || "application-x-executable"
+    action.command = command
+    syncAppIdentity(action, action.command, action.storageId, action.appId)
+    return nextItems
+}
+
+function addContainerApp(items, selectedIndex) {
+    var nextItems = clone(items)
+    nextItems[selectedIndex].apps = nextItems[selectedIndex].apps instanceof Array ? nextItems[selectedIndex].apps : []
+    nextItems[selectedIndex].apps.push(newContainerApp(nextItems[selectedIndex]))
+    return {
+        "items": nextItems,
+        "selectedActionIndex": nextItems[selectedIndex].apps.length - 1
+    }
+}
+
+function containerApplicationIdentityKeys(application) {
+    var source = application || {}
+    var keys = []
+    var storageId = normalizedApplicationId(source.storageId || "")
+        .toLowerCase()
+    var appId = normalizedApplicationId(source.appId || "").toLowerCase()
+    if (storageId.length > 0) {
+        keys.push("storage:" + storageId)
+    }
+    if (appId.length > 0 && appId !== storageId) {
+        keys.push("app:" + appId)
+    }
+    return keys
+}
+
+function addApplicationToManualContainer(items, selectedIndex, application) {
+    if (!(items instanceof Array) || !Number.isInteger(selectedIndex)
+            || selectedIndex < 0 || selectedIndex >= items.length) {
+        return {
+            "items": items,
+            "changed": false,
+            "status": "invalid-target",
+            "container": null
+        }
+    }
+
+    var currentContainer = items[selectedIndex]
+    if (!currentContainer || currentContainer.type !== "folder") {
+        return {
+            "items": items,
+            "changed": false,
+            "status": "invalid-target",
+            "container": currentContainer || null
+        }
+    }
+    if ((currentContainer.sourceType || "manual") !== "manual") {
+        return {
+            "items": items,
+            "changed": false,
+            "status": "managed-container",
+            "container": currentContainer
+        }
+    }
+
+    var sourceApplication = application || {}
+    var storageId = String(sourceApplication.storageId || "").trim()
+    var incomingKeys = containerApplicationIdentityKeys(sourceApplication)
+    if (storageId.length === 0 || storageId.length > 512
+            || incomingKeys.length === 0) {
+        return {
+            "items": items,
+            "changed": false,
+            "status": "invalid-application",
+            "container": currentContainer
+        }
+    }
+
+    var existingApplications = currentContainer.apps instanceof Array
+        ? currentContainer.apps : []
+    for (var applicationIndex = 0;
+            applicationIndex < existingApplications.length;
+            applicationIndex++) {
+        var existingKeys = containerApplicationIdentityKeys(
+            existingApplications[applicationIndex])
+        for (var incomingIndex = 0;
+                incomingIndex < incomingKeys.length; incomingIndex++) {
+            if (existingKeys.indexOf(incomingKeys[incomingIndex]) >= 0) {
+                return {
+                    "items": items,
+                    "changed": false,
+                    "status": "duplicate",
+                    "container": currentContainer
+                }
+            }
+        }
+    }
+
+    var nextItems = clone(items)
+    var nextContainer = nextItems[selectedIndex]
+    nextContainer.apps = nextContainer.apps instanceof Array
+        ? nextContainer.apps : []
+    var nextApplication = {
+        "type": "app",
+        "name": String(sourceApplication.name || storageId)
+            .trim().substring(0, 256),
+        "icon": String(sourceApplication.icon
+            || "application-x-executable").trim().substring(0, 512),
+        "command": String(sourceApplication.command || "")
+            .trim().substring(0, 4096),
+        "storageId": storageId,
+        "appId": normalizedApplicationId(
+            sourceApplication.appId || storageId).substring(0, 512)
+    }
+    var description = String(sourceApplication.description || "")
+        .trim().substring(0, 512)
+    if (description.length > 0) {
+        nextApplication.description = description
+    }
+    pruneApp(nextApplication)
+    nextContainer.apps.push(nextApplication)
+    pruneFolder(nextContainer)
+    return {
+        "items": nextItems,
+        "changed": true,
+        "status": "added",
+        "container": nextContainer,
+        "application": nextApplication
+    }
+}
+
+function removeContainerApp(items, selectedIndex, selectedActionIndex) {
+    var nextItems = clone(items)
+    nextItems[selectedIndex].apps.splice(selectedActionIndex, 1)
+    return {
+        "items": nextItems,
+        "selectedActionIndex": Math.min(selectedActionIndex, nextItems[selectedIndex].apps.length - 1)
+    }
+}
+
+function moveContainerApp(items, selectedIndex, selectedActionIndex, target) {
+    var nextItems = clone(items)
+    var app = nextItems[selectedIndex].apps.splice(selectedActionIndex, 1)[0]
+    nextItems[selectedIndex].apps.splice(target, 0, app)
+    return {
+        "items": nextItems,
+        "selectedActionIndex": target
+    }
+}
+
+function applyContainerApp(items, selectedIndex, selectedActionIndex, name, icon, command) {
+    var nextItems = clone(items)
+    var app = nextItems[selectedIndex].apps[selectedActionIndex]
+    app.type = "app"
+    app.name = name || "Application"
+    app.icon = icon || nextItems[selectedIndex].icon || "application-x-executable"
+    app.command = command || ""
+    syncAppIdentity(app, app.command, app.storageId, app.appId)
+    pruneApp(app)
+    return nextItems
+}

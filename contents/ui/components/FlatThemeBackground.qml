@@ -1,0 +1,123 @@
+import QtQuick
+import org.kde.kirigami as Kirigami
+import org.kde.plasma.core as PlasmaCore
+
+Item {
+    id: root
+
+    property var theme: ({})
+    property bool dockVertical: false
+    property bool inPanel: false
+    property int panelLocation: PlasmaCore.Types.BottomEdge
+
+    // Resolve the complete JSON theme through the same bounded multisample
+    // profile used by the other custom renderers.
+    layer.enabled: visible
+    layer.samples: 8
+    layer.smooth: true
+
+    readonly property var surface: theme && theme.surface ? theme.surface : ({})
+    readonly property var gradientData: surface.gradient ? surface.gradient : ({})
+    readonly property var gradientStops: gradientData.stops ? gradientData.stops : []
+    readonly property var borderData: surface.border ? surface.border : ({})
+    readonly property var shadowData: theme && theme.shadow ? theme.shadow : ({})
+    readonly property var animationData: theme && theme.animation
+        ? theme.animation : ({})
+    readonly property color surfaceColor: surface.color || "transparent"
+    readonly property real surfaceRadius: Number(surface.radius || 0)
+    readonly property string gradientDirection: String(gradientData.direction || "vertical")
+    readonly property string effectiveGradientDirection: root.dockVertical
+        ? (root.gradientDirection === "horizontal" ? "vertical" : "horizontal")
+        : root.gradientDirection
+    readonly property real shadowSize: Number(shadowData.size || 0)
+    readonly property real shadowXOffset: Number(shadowData.xOffset || 0)
+    readonly property real shadowYOffset: Number(shadowData.yOffset || 0)
+    readonly property bool paletteFlowEnabled:
+        animationData.type === "paletteFlow"
+
+    function gradientStop(index) {
+        if (gradientStops.length === 0) {
+            return {
+                "position": index === 0 ? 0 : 1,
+                "color": surfaceColor
+            }
+        }
+        return gradientStops[Math.min(index, gradientStops.length - 1)]
+    }
+
+    Kirigami.ShadowedRectangle {
+        anchors {
+            fill: parent
+            leftMargin: root.shadowSize + Math.max(0, -root.shadowXOffset)
+            rightMargin: root.shadowSize + Math.max(0, root.shadowXOffset)
+            topMargin: root.shadowSize + Math.max(0, -root.shadowYOffset)
+            bottomMargin: root.shadowSize + Math.max(0, root.shadowYOffset)
+        }
+        color: root.surfaceColor
+        radius: root.surfaceRadius
+        shadow.size: root.shadowSize
+        shadow.xOffset: root.shadowXOffset
+        shadow.yOffset: root.shadowYOffset
+        shadow.color: root.shadowData.color || "transparent"
+
+        Rectangle {
+            anchors.fill: parent
+            visible: !root.paletteFlowEnabled
+            color: root.surfaceColor
+            radius: root.surfaceRadius
+            border.width: Number(root.borderData.width || 0)
+            border.color: root.borderData.color || "transparent"
+
+            gradient: Gradient {
+                orientation: root.effectiveGradientDirection === "horizontal"
+                    ? Gradient.Horizontal
+                    : Gradient.Vertical
+
+                GradientStop {
+                    position: Number(root.gradientStop(0).position)
+                    color: root.gradientStop(0).color
+                }
+                GradientStop {
+                    position: Number(root.gradientStop(1).position)
+                    color: root.gradientStop(1).color
+                }
+                GradientStop {
+                    position: Number(root.gradientStop(2).position)
+                    color: root.gradientStop(2).color
+                }
+                GradientStop {
+                    position: Number(root.gradientStop(3).position)
+                    color: root.gradientStop(3).color
+                }
+                GradientStop {
+                    position: Number(root.gradientStop(4).position)
+                    color: root.gradientStop(4).color
+                }
+                GradientStop {
+                    position: Number(root.gradientStop(5).position)
+                    color: root.gradientStop(5).color
+                }
+                GradientStop {
+                    position: Number(root.gradientStop(6).position)
+                    color: root.gradientStop(6).color
+                }
+                GradientStop {
+                    position: Number(root.gradientStop(7).position)
+                    color: root.gradientStop(7).color
+                }
+            }
+        }
+
+        AnimatedGradientSurface {
+            anchors.fill: parent
+            visible: root.paletteFlowEnabled
+            gradientStops: root.gradientStops
+            gradientDirection: root.effectiveGradientDirection
+            flowDirection: String(root.animationData.direction || "forward")
+            flowDuration: Number(root.animationData.duration || 16000)
+            radius: root.surfaceRadius
+            borderWidth: Number(root.borderData.width || 0)
+            borderColor: root.borderData.color || "transparent"
+        }
+    }
+}

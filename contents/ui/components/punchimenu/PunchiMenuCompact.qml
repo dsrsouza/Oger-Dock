@@ -1,0 +1,1180 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+
+import QtQuick
+import QtQuick.Controls as Controls
+import QtQuick.Layouts
+import org.kde.kirigami as Kirigami
+import org.kde.ksvg as KSvg
+import org.kde.coreaddons as KCoreAddons
+import org.kde.kcmutils as KCM
+import "../../org/punchi/dock" as Punchi
+
+// Translation helpers are supplied by the plasmoid context.
+// qmllint disable unqualified
+FocusScope {
+    id: root
+
+    required property var systemDiscovery
+    property var applicationCatalog: []
+    property var favorites: []
+    property bool favoriteLimitReached: false
+    property var dockItemsController: null
+    property bool showApplicationLabels: true
+    property string hoverAnimation: "pulse"
+    property string performanceMode: "automatic"
+    property int performanceThreshold: 120
+    readonly property bool performanceBudgetActive:
+        performanceMode === "economy"
+        || (performanceMode !== "visual" && applicationCatalog.length
+            >= Math.max(40, performanceThreshold))
+    readonly property string efficientHoverAnimation:
+        performanceBudgetActive ? "none" : hoverAnimation
+    property bool sortApplicationsAlphabetically: false
+    property bool backgroundBlurEnabled: true
+    property real backgroundOpacity: 0.85
+    property bool compactShowQuickLaunchers: true
+    property int normalPanelDistancePercent: 25
+    property real themeFrameLeftMargin: 0
+    property real themeFrameTopMargin: 0
+    property real themeFrameRightMargin: 0
+    property real themeFrameBottomMargin: 0
+
+    property bool menuOpen: false
+    property string activeCategoryKey: ""
+    property string activeCategoryTitle: ""
+    property var activeCategoryApps: []
+    property int selectedCategoryIndex: -1
+    property string searchQuery: ""
+    property bool settingsViewActive: false
+    property string applicationErrorMessage: ""
+
+    readonly property real nativeFrameThickness: 2
+    readonly property real safeThemeFrameLeftMargin: {
+        const requestedMargin = Number(themeFrameLeftMargin)
+        return Number.isFinite(requestedMargin) ? Math.max(0, requestedMargin) : 0
+    }
+    readonly property real safeThemeFrameTopMargin: {
+        const requestedMargin = Number(themeFrameTopMargin)
+        return Number.isFinite(requestedMargin) ? Math.max(0, requestedMargin) : 0
+    }
+    readonly property real safeThemeFrameRightMargin: {
+        const requestedMargin = Number(themeFrameRightMargin)
+        return Number.isFinite(requestedMargin) ? Math.max(0, requestedMargin) : 0
+    }
+    readonly property real safeThemeFrameBottomMargin: {
+        const requestedMargin = Number(themeFrameBottomMargin)
+        return Number.isFinite(requestedMargin) ? Math.max(0, requestedMargin) : 0
+    }
+    readonly property real themeFrameOverlapLeft: Math.max(0,
+        safeThemeFrameLeftMargin - nativeFrameThickness)
+    readonly property real themeFrameOverlapTop: Math.max(0,
+        safeThemeFrameTopMargin - nativeFrameThickness)
+    readonly property real themeFrameOverlapRight: Math.max(0,
+        safeThemeFrameRightMargin - nativeFrameThickness)
+    readonly property real themeFrameOverlapBottom: Math.max(0,
+        safeThemeFrameBottomMargin - nativeFrameThickness)
+
+    readonly property bool motionEnabled: Kirigami.Units.longDuration > 0
+        && !performanceBudgetActive
+    readonly property real themeMarginLeft: compactBackground ? compactBackground.margins.left : 0
+    readonly property real themeMarginTop: compactBackground ? compactBackground.margins.top : 0
+    readonly property real themeMarginRight: compactBackground ? compactBackground.margins.right : 0
+    readonly property real themeMarginBottom: compactBackground ? compactBackground.margins.bottom : 0
+
+    readonly property real baseFrameMargins: themeMarginLeft + themeMarginRight + Kirigami.Units.smallSpacing * 2
+    readonly property real baseHeightMargins: themeMarginTop + themeMarginBottom + Kirigami.Units.smallSpacing * 2
+
+    readonly property real itemHeight: Math.round(Kirigami.Units.gridUnit * 2.0)
+    readonly property real mainColumnWidth: Math.round(Kirigami.Units.gridUnit * 22)
+    readonly property real flyoutWidth: Math.round(Kirigami.Units.gridUnit * 20)
+    readonly property real primarySurfaceWidth: mainColumnWidth + baseFrameMargins
+    readonly property bool flyoutVisible: !settingsViewActive
+        && (root.activeCategoryKey.length > 0 || root.searchQuery.length > 0)
+    readonly property real totalContentWidth: flyoutVisible
+        ? primarySurfaceWidth + flyoutWidth + Kirigami.Units.smallSpacing * 2
+        : primarySurfaceWidth
+
+    readonly property real safeBackgroundOpacity: {
+        const requestedOpacity = Number(backgroundOpacity)
+        return Number.isFinite(requestedOpacity)
+            ? Math.max(0.50, Math.min(1.0, requestedOpacity))
+            : 0.85
+    }
+
+    readonly property var backgroundBlurMaskSource: compactBackground
+    readonly property point backgroundBlurMaskOffset:
+        mappedSurfaceGeometry.backgroundMaskOffset
+
+    PunchiMenuMappedSurfaceGeometry {
+        id: mappedSurfaceGeometry
+        targetItem: root
+        surfaceItem: surface
+        backgroundItem: compactBackground
+        translationX: surfaceTranslation.x
+        translationY: surfaceTranslation.y
+        leftInset: compactBackground.inset.left
+        topInset: compactBackground.inset.top
+        rightInset: compactBackground.inset.right
+        bottomInset: compactBackground.inset.bottom
+    }
+
+    signal applicationLaunched()
+    signal menuCloseRequested()
+    signal closeFinished()
+    signal settingChangeRequested(string fieldName, var value)
+    signal applicationContextRequested(var sourceItem, var application, real x, real y)
+
+    readonly property int openDuration: motionEnabled
+        ? Math.max(220, Math.min(280, Kirigami.Units.longDuration))
+        : 0
+    readonly property int closeDuration: motionEnabled
+        ? Math.max(140, Math.min(180, Kirigami.Units.shortDuration))
+        : 0
+
+    Timer {
+        id: compactCloseTimer
+        interval: root.closeDuration
+        repeat: false
+        onTriggered: root.closeFinished()
+    }
+
+    onMenuOpenChanged: {
+        if (!menuOpen) {
+            closeApplicationContextMenu(false)
+        }
+    }
+
+    onVisibleChanged: {
+        if (!visible) {
+            closeApplicationContextMenu(false)
+        }
+    }
+    signal addFavoriteRequested(string storageId)
+    signal removeFavoriteRequested(string storageId)
+    signal pinToDockRequested(string storageId, string appName, string appIcon, string appCommand)
+    signal addToDesktopRequested(string storageId, string appCommand)
+    signal setApplicationHiddenRequested(string storageId, bool hidden)
+
+    readonly property bool favoritesRowActive: compactShowQuickLaunchers
+        && searchQuery.length === 0
+        && favorites !== null
+        && favorites !== undefined
+        && favorites.length > 0
+    readonly property real compactHeightWithoutQuickLaunchers: Math.round(Kirigami.Units.gridUnit * 19.4)
+    readonly property real compactHeightWithQuickLaunchers: Math.round(Kirigami.Units.gridUnit * 22.0)
+    readonly property real desiredMenuHeight: favoritesRowActive
+        ? compactHeightWithQuickLaunchers + baseHeightMargins
+        : compactHeightWithoutQuickLaunchers + baseHeightMargins
+
+    width: totalContentWidth
+    implicitWidth: totalContentWidth
+    implicitHeight: desiredMenuHeight
+
+    Punchi.SessionActionsController {
+        id: sessionController
+    }
+
+    KCoreAddons.KUser { id: currentUser }
+
+    Punchi.PunchiMenuLayoutModel {
+        id: layoutModel
+        applications: root.applicationCatalog || []
+        alphabeticalSortingEnabled: root.sortApplicationsAlphabetically
+    }
+
+    PunchiMenuApplicationState {
+        id: applicationState
+
+        favorites: root.favorites
+        applicationCatalog: root.applicationCatalog
+    }
+
+    readonly property var categoryOrder: [
+        "Network",
+        "Graphics",
+        "AudioVideo",
+        "Office",
+        "Development",
+        "System",
+        "Utility",
+        "Game",
+        "Education",
+        "Settings"
+    ]
+
+    function categoryTitle(categoryId) {
+        switch (categoryId) {
+        case "Folders":
+            return i18nc("@title:application-category", "Folders")
+        case "Network":
+            return i18nc("@title:application-category", "Internet")
+        case "Graphics":
+            return i18nc("@title:application-category", "Graphics")
+        case "AudioVideo":
+            return i18nc("@title:application-category", "Multimedia")
+        case "Office":
+            return i18nc("@title:application-category", "Office")
+        case "Development":
+            return i18nc("@title:application-category", "Development")
+        case "System":
+            return i18nc("@title:application-category", "System")
+        case "Utility":
+            return i18nc("@title:application-category", "Utilities")
+        case "Game":
+            return i18nc("@title:application-category", "Games")
+        case "Education":
+            return i18nc("@title:application-category", "Education")
+        case "Settings":
+            return i18nc("@title:application-category", "Settings")
+        case "All":
+            return i18nc("@title:application-category", "All Applications")
+        default:
+            return i18nc("@title:application-category", "Other")
+        }
+    }
+
+    function categoryIcon(categoryId) {
+        switch (categoryId) {
+        case "Network": return "applications-internet"
+        case "Graphics": return "applications-graphics"
+        case "AudioVideo": return "applications-multimedia"
+        case "Office": return "applications-office"
+        case "Development": return "applications-development"
+        case "System": return "applications-system"
+        case "Utility": return "applications-utilities"
+        case "Game": return "applications-games"
+        case "Education": return "applications-science"
+        case "Settings": return "preferences-system"
+        case "All": return "applications-all"
+        default: break
+        }
+        if (root.systemDiscovery && typeof root.systemDiscovery.iconForCategory === "function") {
+            const icon = root.systemDiscovery.iconForCategory(categoryId)
+            if (icon && icon.length > 0) {
+                return icon
+            }
+        }
+        return "applications-other"
+    }
+
+    readonly property var availableCategories: {
+        const groups = layoutModel.categoryGroups || []
+        const result = []
+        const groupsByKey = {}
+        for (let i = 0; i < groups.length; i++) {
+            const grp = groups[i]
+            if (grp && grp.categoryId) {
+                groupsByKey[grp.categoryId] = grp
+            }
+        }
+        for (let j = 0; j < categoryOrder.length; j++) {
+            const key = categoryOrder[j]
+            if (groupsByKey[key] && groupsByKey[key].members && groupsByKey[key].members.length > 0) {
+                result.push({
+                    "categoryId": key,
+                    "title": root.categoryTitle(key),
+                    "icon": root.categoryIcon(key),
+                    "members": groupsByKey[key].members
+                })
+            }
+        }
+        if (root.applicationCatalog && root.applicationCatalog.length > 0) {
+            result.push({
+                "categoryId": "All",
+                "title": root.categoryTitle("All"),
+                "icon": root.categoryIcon("All"),
+                "members": root.applicationCatalog
+            })
+        }
+        return result
+    }
+
+    function openCategory(index) {
+        if (index >= 0 && index < availableCategories.length) {
+            root.closeApplicationContextMenu(false)
+            root.selectedCategoryIndex = index
+            const cat = availableCategories[index]
+            root.activeCategoryKey = cat.categoryId
+            root.activeCategoryTitle = cat.title
+            root.activeCategoryApps = cat.members || []
+        }
+    }
+
+    function closeFlyout() {
+        root.closeApplicationContextMenu(false)
+        root.activeCategoryKey = ""
+        root.activeCategoryTitle = ""
+        root.activeCategoryApps = []
+        root.selectedCategoryIndex = -1
+    }
+
+    function openMenu() {
+        compactCloseTimer.stop()
+        root.closeApplicationContextMenu(false)
+        root.menuOpen = true
+        root.settingsViewActive = false
+        root.searchQuery = ""
+        searchField.text = ""
+        root.closeFlyout()
+        searchField.forceActiveFocus()
+    }
+
+    function forceClose() {
+        compactCloseTimer.stop()
+        root.closeApplicationContextMenu(false)
+        root.menuOpen = false
+        root.closeFlyout()
+        compactCloseTimer.restart()
+    }
+
+    function resetMenu() {
+        compactCloseTimer.stop()
+        root.closeApplicationContextMenu(false)
+        root.menuOpen = false
+        root.settingsViewActive = false
+        root.searchQuery = ""
+        searchField.text = ""
+        root.closeFlyout()
+    }
+
+    function closeMenu() {
+        root.closeApplicationContextMenu(false)
+        forceClose()
+        root.menuCloseRequested()
+    }
+
+    function launchApplication(storageId) {
+        if (!storageId || storageId.length === 0) {
+            return
+        }
+        if (root.systemDiscovery && typeof root.systemDiscovery.launchApplication === "function") {
+            root.systemDiscovery.launchApplication(storageId)
+            root.applicationLaunched()
+            root.closeMenu()
+        }
+    }
+
+    function launchCommand(command) {
+        if (!command || command.length === 0) {
+            return
+        }
+        if (root.systemDiscovery && typeof root.systemDiscovery.launchApplicationByCommand === "function") {
+            root.systemDiscovery.launchApplicationByCommand(command)
+            root.applicationLaunched()
+            root.closeMenu()
+        }
+    }
+
+    function isFavorite(storageId) {
+        return applicationState.isFavorite(storageId)
+    }
+
+    function contextEntry(actionId, text, iconName, enabled) {
+        return {
+            actionId: actionId,
+            text: text,
+            iconName: iconName,
+            enabled: enabled !== false,
+            separator: false
+        }
+    }
+
+    function standaloneApplicationContextEntries(context) {
+        return [
+            contextEntry("toggleFavorite", context.isFavorite
+                    ? i18nc("@action:inmenu", "Remove from Favorites")
+                    : i18nc("@action:inmenu", "Add to Favorites"),
+                context.isFavorite ? "favorite-favorited" : "favorite",
+                context.isFavorite || !root.favoriteLimitReached),
+            contextEntry("toggleDockPin", context.isPinnedToDock
+                    ? i18nc("@action:inmenu", "Remove from Dock")
+                    : i18nc("@action:inmenu", "Pin to Dock"),
+                context.isPinnedToDock ? "window-unpin" : "window-pin", true),
+            contextEntry("addToDesktop",
+                i18nc("@action:inmenu", "Add to Desktop"),
+                "user-desktop", true)
+        ]
+    }
+
+    function openApplicationContextMenu(sourceItem, appData, x, y) {
+        if (!appData) {
+            return
+        }
+        const normalizedId = String(appData.storageId || appData.id || "").trim()
+        const normalizedCmd = String(appData.command || appData.exec || "").trim()
+        const appName = String(appData.appName || appData.name || "")
+        const appIcon = String(appData.appIcon || appData.icon || "")
+        const primaryId = normalizedId.length > 0 ? normalizedId : normalizedCmd
+        const localX = Number(x)
+        const localY = Number(y)
+        if (!sourceItem || primaryId.length === 0
+                || !Number.isFinite(localX) || !Number.isFinite(localY)) {
+            return
+        }
+        closeApplicationContextMenu(false)
+        const context = {
+            storageId: normalizedId,
+            appCommand: normalizedCmd,
+            appName: appName,
+            appIcon: appIcon,
+            isFavorite: isFavorite(primaryId),
+            isPinnedToDock: root.dockItemsController
+                ? root.dockItemsController.isAppPinnedToDock(
+                    normalizedId, normalizedCmd)
+                : false
+        }
+        const entries = standaloneApplicationContextEntries(context)
+        applicationContextMenuSurface.openAt(sourceItem,
+            localX, localY, entries, context)
+    }
+
+    function closeApplicationContextMenu(restoreFocus) {
+        if (applicationContextMenuSurface && applicationContextMenuSurface.active) {
+            applicationContextMenuSurface.close(restoreFocus !== false)
+        }
+    }
+
+    function activateContextMenuAction(actionId) {
+        const storageId = String(applicationContextMenuSurface.targetStorageId || "")
+        const appName = String(applicationContextMenuSurface.targetAppName || "")
+        const appIcon = String(applicationContextMenuSurface.targetAppIcon || "")
+        const appCommand = String(applicationContextMenuSurface.targetAppCommand || "")
+        const isFav = applicationContextMenuSurface.targetIsFavorite
+
+        closeApplicationContextMenu(true)
+
+        if (actionId === "toggleFavorite") {
+            if (isFav) {
+                root.removeFavoriteRequested(storageId)
+            } else {
+                root.addFavoriteRequested(storageId)
+            }
+        } else if (actionId === "toggleDockPin") {
+            root.pinToDockRequested(storageId, appName, appIcon, appCommand)
+        } else if (actionId === "addToDesktop") {
+            root.addToDesktopRequested(storageId, appCommand)
+        }
+    }
+
+    Timer {
+        id: categoryHoverTimer
+        interval: 95
+        repeat: false
+        property int pendingIndex: -1
+        onTriggered: {
+            if (root.menuOpen && !root.settingsViewActive
+                    && pendingIndex >= 0 && pendingIndex !== root.selectedCategoryIndex) {
+                root.openCategory(pendingIndex)
+            }
+            pendingIndex = -1
+        }
+    }
+
+    Item {
+        id: surface
+        anchors.fill: parent
+        opacity: root.menuOpen ? 1.0 : 0.0
+        scale: root.motionEnabled
+            ? (root.menuOpen ? 1.0 : 0.88)
+            : 1.0
+        transformOrigin: Item.Bottom
+
+        Behavior on scale {
+            enabled: root.motionEnabled
+            NumberAnimation {
+                duration: root.menuOpen ? root.openDuration : root.closeDuration
+                easing.type: root.menuOpen ? Easing.OutBack : Easing.InQuad
+                easing.overshoot: 1.15
+            }
+        }
+
+        transform: Translate {
+            id: surfaceTranslation
+            y: root.motionEnabled
+                ? (root.menuOpen ? 0 : Kirigami.Units.gridUnit * 1.5)
+                : 0
+
+            Behavior on y {
+                enabled: root.motionEnabled
+                NumberAnimation {
+                    duration: root.menuOpen ? root.openDuration : root.closeDuration
+                    easing.type: root.menuOpen ? Easing.OutCubic : Easing.InQuad
+                }
+            }
+        }
+
+        Behavior on opacity {
+            enabled: root.motionEnabled
+            NumberAnimation {
+                duration: root.menuOpen ? root.openDuration : root.closeDuration
+                easing.type: root.menuOpen ? Easing.OutCubic : Easing.InQuad
+            }
+        }
+
+        Rectangle {
+            anchors.fill: parent
+            anchors.margins: -5
+            radius: Math.max(12, Kirigami.Units.cornerRadius * 2)
+            color: "#26000000"
+            visible: root.menuOpen
+        }
+        KSvg.FrameSvgItem {
+            id: compactBackground
+            anchors.fill: parent
+            anchors.leftMargin: -root.themeFrameOverlapLeft
+            anchors.topMargin: -root.themeFrameOverlapTop
+            anchors.rightMargin: -root.themeFrameOverlapRight
+            anchors.bottomMargin: -root.themeFrameOverlapBottom
+            imagePath: "widgets/background"
+            opacity: root.safeBackgroundOpacity
+        }
+
+        // Use the same single-color accent edge as the normal launcher.
+        // It sits on the existing background and does not change geometry.
+        Rectangle {
+            anchors.fill: parent
+            radius: Math.max(8, Kirigami.Units.cornerRadius * 1.4)
+            color: "transparent"
+            border.width: 0
+            border.color: "transparent"
+            visible: root.menuOpen
+        }
+
+        RowLayout {
+            anchors.fill: parent
+            anchors.leftMargin: root.themeMarginLeft + Kirigami.Units.smallSpacing
+            anchors.topMargin: root.themeMarginTop + Kirigami.Units.smallSpacing
+            anchors.rightMargin: root.themeMarginRight + Kirigami.Units.smallSpacing
+            anchors.bottomMargin: root.themeMarginBottom + Kirigami.Units.smallSpacing
+            spacing: Kirigami.Units.smallSpacing
+
+        // Main Column
+        Item {
+            Layout.preferredWidth: root.mainColumnWidth
+            Layout.fillHeight: true
+
+            // Flip: Normal Menu View vs Settings View
+            ColumnLayout {
+                anchors.fill: parent
+                spacing: Kirigami.Units.smallSpacing
+                visible: !root.settingsViewActive
+
+                // Settings is now a white gear at the upper-left of the
+                // compact menu. Using the same action background as the
+                // session buttons avoids a mismatched visual vocabulary.
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: Kirigami.Units.smallSpacing
+
+                    Controls.ToolButton {
+                        id: compactHeaderSettings
+                        visible: false // configuration is in the footer.
+                        Layout.preferredWidth: 28
+                        Layout.preferredHeight: 28
+                        icon.name: root.settingsViewActive ? "view-grid" : "configure"
+                        text: i18nc("@action:button", "Settings")
+                        display: Controls.AbstractButton.IconOnly
+                        contentItem: Kirigami.Icon {
+                            source: compactHeaderSettings.icon.name
+                            color: "white"
+                            implicitWidth: 20
+                            implicitHeight: 20
+                        }
+                        background: PunchiMenuActionBackground {
+                            highlighted: compactHeaderSettings.hovered
+                                || compactHeaderSettings.down
+                            accentColor: "white"
+                            showBaseSurface: true
+                        }
+                        Controls.ToolTip.visible: hovered
+                        Controls.ToolTip.text: text
+                        onClicked: {
+                            root.closeFlyout()
+                            root.settingsViewActive = !root.settingsViewActive
+                        }
+                    }
+
+                    Kirigami.SearchField {
+                        id: searchField
+                        Layout.fillWidth: true
+                        placeholderText: i18nc("@info:placeholder", "Search applications…")
+                        Accessible.name: i18nc("@label", "Search applications")
+                        background: PunchiMenuSearchBackground {
+                            fieldActiveFocus: searchField.activeFocus
+                            fieldHovered: searchField.hovered
+                        }
+
+                        onTextChanged: {
+                            root.searchQuery = text.trim()
+                            if (root.searchQuery.length > 0) {
+                                // Filter catalog
+                                const query = root.searchQuery.toLowerCase()
+                                const matches = []
+                                const catalog = root.applicationCatalog || []
+                                for (let i = 0; i < catalog.length; i++) {
+                                    const app = catalog[i]
+                                    const name = String(app.appName || app.name || "").toLowerCase()
+                                    const generic = String(app.genericName || "").toLowerCase()
+                                    const comment = String(app.comment || app.description || "").toLowerCase()
+                                    if (name.includes(query) || generic.includes(query) || comment.includes(query)) {
+                                        matches.push(app)
+                                    }
+                                }
+                                root.activeCategoryKey = "Search"
+                                root.activeCategoryTitle = i18nc("@title:category", "Search Results")
+                                root.activeCategoryApps = matches
+                            } else {
+                                root.closeFlyout()
+                            }
+                        }
+
+                        Keys.onDownPressed: function(event) {
+                            if (categoryListView.count > 0) {
+                                categoryListView.forceActiveFocus()
+                                categoryListView.currentIndex = 0
+                                event.accepted = true
+                            }
+                        }
+
+                        Keys.onEscapePressed: function(event) {
+                            if (text.length > 0) {
+                                text = ""
+                            } else {
+                                root.closeMenu()
+                            }
+                            event.accepted = true
+                        }
+                    }
+                }
+
+                // Favorites Row (Dynamic)
+                Item {
+                    id: favoritesRowContainer
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: root.favoritesRowActive
+                        ? Math.round(Kirigami.Units.gridUnit * 2.2) : 0
+                    visible: root.favoritesRowActive
+
+                    ListView {
+                        id: compactFavoritesListView
+                        anchors.fill: parent
+                        anchors.leftMargin: Kirigami.Units.smallSpacing
+                        anchors.rightMargin: Kirigami.Units.smallSpacing
+                        orientation: ListView.Horizontal
+                        spacing: Kirigami.Units.smallSpacing
+                        clip: true
+                        model: root.favorites
+                        boundsBehavior: Flickable.StopAtBounds
+
+                        delegate: Item {
+                            id: favoriteItemDelegate
+                            required property var modelData
+                            required property int index
+
+                            readonly property var favApp: modelData
+                            readonly property string favStorageId: String((favApp && (favApp.appStorageId || favApp.storageId || favApp.id)) || "")
+                            readonly property string favName: String((favApp && (favApp.appName || favApp.name)) || "")
+                            readonly property string favIcon: String((favApp && (favApp.appIcon || favApp.icon)) || "application-x-executable")
+                            readonly property string favCommand: String((favApp && (favApp.appCommand || favApp.command || favApp.exec)) || "")
+
+                            width: height
+                            height: compactFavoritesListView.height
+                            opacity: root.motionEnabled ? 0 : 1
+                            scale: root.motionEnabled ? 0.82 : 1.0
+
+                            SequentialAnimation {
+                                id: favEntryAnimation
+                                running: root.motionEnabled && root.menuOpen
+                                PauseAnimation {
+                                    duration: Math.min(180, favoriteItemDelegate.index * 25)
+                                }
+                                ParallelAnimation {
+                                    NumberAnimation {
+                                        target: favoriteItemDelegate
+                                        property: "opacity"
+                                        to: 1.0
+                                        duration: Math.max(140, Kirigami.Units.shortDuration)
+                                        easing.type: Easing.OutCubic
+                                    }
+                                    NumberAnimation {
+                                        target: favoriteItemDelegate
+                                        property: "scale"
+                                        to: 1.0
+                                        duration: Math.max(140, Kirigami.Units.shortDuration)
+                                        easing.type: Easing.OutBack
+                                        easing.overshoot: 1.25
+                                    }
+                                }
+                            }
+
+                            Item {
+                                id: favContentContainer
+                                anchors.fill: parent
+                                scale: favMouseArea.pressed ? 0.94 : (favMouseArea.containsMouse ? 1.08 : 1.0)
+
+                                Behavior on scale {
+                                    enabled: root.motionEnabled
+                                    NumberAnimation {
+                                        duration: Kirigami.Units.shortDuration
+                                        easing.type: Easing.OutCubic
+                                    }
+                                }
+
+                                PunchiMenuItemHighlight {
+                                    anchors.fill: parent
+                                    anchors.margins: 1
+                                    hovered: favMouseArea.containsMouse
+                                    pressed: favMouseArea.pressed
+                                    motionEnabled: root.motionEnabled
+                                    animationMode: root.hoverAnimation
+
+                                    Kirigami.Icon {
+                                        anchors.centerIn: parent
+                                        width: Kirigami.Units.iconSizes.smallMedium
+                                        height: Kirigami.Units.iconSizes.smallMedium
+                                        roundToIconSize: false
+                                        source: favoriteItemDelegate.favIcon
+                                        fallback: "application-x-executable"
+                                        smooth: true
+                                    }
+                                }
+                            }
+
+                            MouseArea {
+                                id: favMouseArea
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                acceptedButtons: Qt.LeftButton | Qt.RightButton
+
+                                onClicked: function(mouse) {
+                                    if (mouse.button === Qt.RightButton) {
+                                        root.openApplicationContextMenu(
+                                            favoriteItemDelegate,
+                                            {
+                                                storageId: favoriteItemDelegate.favStorageId,
+                                                appName: favoriteItemDelegate.favName,
+                                                appIcon: favoriteItemDelegate.favIcon,
+                                                appCommand: favoriteItemDelegate.favCommand
+                                            },
+                                            mouse.x, mouse.y)
+                                    } else {
+                                        if (favoriteItemDelegate.favStorageId.length > 0) {
+                                            root.launchApplication(favoriteItemDelegate.favStorageId)
+                                        } else if (favoriteItemDelegate.favCommand.length > 0) {
+                                            root.launchCommand(favoriteItemDelegate.favCommand)
+                                        }
+                                    }
+                                }
+                            }
+
+                            Accessible.role: Accessible.Button
+                            Accessible.name: favoriteItemDelegate.favName
+                        }
+                    }
+                }
+
+                Kirigami.Separator {
+                    Layout.fillWidth: true
+                    visible: root.favoritesRowActive
+                }
+
+                // Categories List
+                Controls.ScrollView {
+                    id: categoryScrollView
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    clip: true
+                    visible: root.searchQuery.length === 0
+
+                    ListView {
+                        id: categoryListView
+                        width: categoryScrollView.availableWidth
+                        model: root.availableCategories
+                        spacing: 2
+                        boundsBehavior: Flickable.StopAtBounds
+                        currentIndex: root.selectedCategoryIndex
+
+                        delegate: Item {
+                            id: categoryDelegate
+                            required property int index
+                            required property var modelData
+
+                            readonly property var categoryItem: modelData
+                            readonly property bool isSelected: root.selectedCategoryIndex === index
+
+                            width: categoryListView.width
+                            height: root.itemHeight
+
+                            PunchiMenuItemHighlight {
+                                anchors.fill: parent
+                                anchors.leftMargin: Kirigami.Units.smallSpacing
+                                anchors.rightMargin: Kirigami.Units.smallSpacing
+                                hovered: catMouseArea.containsMouse
+                                selected: categoryDelegate.isSelected
+                                focused: categoryDelegate.isSelected && categoryListView.activeFocus
+                                pressed: catMouseArea.pressed
+                                motionEnabled: root.motionEnabled
+                                animationMode: root.hoverAnimation
+
+                                RowLayout {
+                                    anchors.fill: parent
+                                    anchors.leftMargin: Kirigami.Units.smallSpacing * 2
+                                    anchors.rightMargin: Kirigami.Units.smallSpacing * 2
+                                    spacing: Kirigami.Units.smallSpacing * 2
+
+                                    Kirigami.Icon {
+                                        Layout.preferredWidth: Kirigami.Units.iconSizes.smallMedium
+                                        Layout.preferredHeight: Kirigami.Units.iconSizes.smallMedium
+                                        source: categoryDelegate.categoryItem.icon
+                                        fallback: "applications-other"
+                                        smooth: true
+                                    }
+
+                                    Controls.Label {
+                                        Layout.fillWidth: true
+                                        text: categoryDelegate.categoryItem.title
+                                        color: Kirigami.Theme.textColor
+                                        elide: Text.ElideRight
+                                        verticalAlignment: Text.AlignVCenter
+                                    }
+
+                                    Kirigami.Icon {
+                                        Layout.preferredWidth: Kirigami.Units.iconSizes.small
+                                        Layout.preferredHeight: Kirigami.Units.iconSizes.small
+                                        source: "go-next-symbolic"
+                                        opacity: 0.6
+                                    }
+                                }
+                            }
+
+                            MouseArea {
+                                id: catMouseArea
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+
+                                // Cached categories are cheap to switch; a
+                                // short hover dwell prevents accidental flicker.
+                                onEntered: {
+                                    if (!root.menuOpen || root.settingsViewActive
+                                            || root.selectedCategoryIndex === categoryDelegate.index)
+                                        return
+                                    categoryHoverTimer.pendingIndex = categoryDelegate.index
+                                    categoryHoverTimer.restart()
+                                }
+                                onExited: {
+                                    if (categoryHoverTimer.pendingIndex === categoryDelegate.index) {
+                                        categoryHoverTimer.stop()
+                                        categoryHoverTimer.pendingIndex = -1
+                                    }
+                                }
+                                onClicked: {
+                                    root.openCategory(categoryDelegate.index)
+                                    if (flyoutPanel.visible) {
+                                        flyoutPanel.selectFirstItem()
+                                    }
+                                }
+                            }
+
+                            Accessible.role: Accessible.MenuItem
+                            Accessible.name: categoryDelegate.categoryItem.title
+                        }
+
+                        Keys.onRightPressed: function(event) {
+                            if (root.activeCategoryApps && root.activeCategoryApps.length > 0) {
+                                flyoutPanel.selectFirstItem()
+                                event.accepted = true
+                            }
+                        }
+
+                        Keys.onReturnPressed: function(event) {
+                            if (root.activeCategoryApps && root.activeCategoryApps.length > 0) {
+                                flyoutPanel.selectFirstItem()
+                                event.accepted = true
+                            }
+                        }
+
+                        Keys.onUpPressed: function(event) {
+                            if (currentIndex > 0) {
+                                currentIndex--
+                                root.openCategory(currentIndex)
+                                event.accepted = true
+                            } else {
+                                searchField.forceActiveFocus()
+                                event.accepted = true
+                            }
+                        }
+
+                        Keys.onDownPressed: function(event) {
+                            if (currentIndex < count - 1) {
+                                currentIndex++
+                                root.openCategory(currentIndex)
+                                event.accepted = true
+                            }
+                        }
+
+                        Keys.onEscapePressed: function(event) {
+                            root.closeMenu()
+                            event.accepted = true
+                        }
+                    }
+                }
+
+                Kirigami.Separator {
+                    Layout.fillWidth: true
+                }
+
+                // Footer is a reserved row below the application list.
+                // Fixed icon-only button geometry prevents theme-dependent
+                // implicit sizes from intruding into list content.
+                RowLayout {
+                    id: compactSessionFooter
+                    Layout.fillWidth: true
+                    Layout.minimumHeight: Math.max(84, Kirigami.Units.gridUnit * 4.6)
+                    Layout.preferredHeight: Layout.minimumHeight
+                    Layout.maximumHeight: Layout.minimumHeight
+                    spacing: Math.max(5, Kirigami.Units.smallSpacing + 1)
+                    clip: false
+
+                    Controls.ToolButton {
+                        id: compactFooterSettings
+                        Layout.preferredWidth: 38
+                        Layout.preferredHeight: 56
+                        text: i18nc("@action:button", "Settings")
+                        icon.name: root.settingsViewActive ? "view-grid" : "configure"
+                        display: Controls.AbstractButton.IconOnly
+                        Controls.ToolTip.visible: hovered
+                        Controls.ToolTip.text: text
+                        onClicked: {
+                            root.closeFlyout()
+                            root.settingsViewActive = !root.settingsViewActive
+                        }
+                    }
+                    // The compact footer uses one spacer; no profile tile.
+                    Item { Layout.fillWidth: true }
+
+                    Controls.ToolButton {
+                        Layout.preferredWidth: 64
+                        Layout.minimumWidth: Layout.preferredWidth
+                        Layout.maximumWidth: Layout.preferredWidth
+                        Layout.preferredHeight: 56
+                        id: compactLogoutButton
+                        icon.name: "system-log-out"
+                        text: i18nc("@action:button", "Log Out")
+                        Controls.ToolTip.visible: hovered
+                        Controls.ToolTip.text: text
+                        display: Controls.AbstractButton.IconOnly
+                        contentItem: ColumnLayout {
+                            spacing: 1
+                            Kirigami.Icon {
+                                Layout.alignment: Qt.AlignHCenter
+                                Layout.preferredWidth: 24
+                                Layout.preferredHeight: 24
+                                source: "system-log-out"
+                                color: Qt.rgba(0.27, 0.55, 0.93, 1)
+                            }
+                            Controls.Label {
+                                Layout.alignment: Qt.AlignHCenter
+                                font.pixelSize: 11
+                                font.family: Kirigami.Theme.defaultFont.family
+                                font.weight: Font.Medium
+                                Layout.fillWidth: true
+                                horizontalAlignment: Text.AlignHCenter
+                                elide: Text.ElideRight
+                                text: i18nc("@action:button", "Exit")
+                            }
+                        }
+                        background: PunchiMenuActionBackground {
+                            highlighted: compactLogoutButton.hovered || compactLogoutButton.down
+                            showBaseSurface: true
+                            accentColor: Qt.rgba(0.27, 0.55, 0.93, 1)
+                        }
+                        Accessible.name: text
+                        visible: sessionController.canLogout
+                        HoverHandler { cursorShape: Qt.PointingHandCursor }
+                        onClicked: {
+                            sessionController.requestLogout()
+                            root.closeMenu()
+                        }
+                    }
+
+                    Controls.ToolButton {
+                        id: compactRestartButton
+                        Controls.ToolTip.visible: hovered
+                        Controls.ToolTip.text: text
+                        Layout.preferredWidth: 64
+                        Layout.minimumWidth: Layout.preferredWidth
+                        Layout.maximumWidth: Layout.preferredWidth
+                        Layout.preferredHeight: 56
+                        icon.name: "system-reboot"
+                        text: i18nc("@action:button", "Restart")
+                        display: Controls.AbstractButton.IconOnly
+                        contentItem: ColumnLayout {
+                            spacing: 1
+                            Kirigami.Icon {
+                                Layout.alignment: Qt.AlignHCenter
+                                Layout.preferredWidth: 24
+                                Layout.preferredHeight: 24
+                                source: "system-reboot"
+                                color: Qt.rgba(0.92, 0.67, 0.18, 1)
+                            }
+                            Controls.Label {
+                                Layout.alignment: Qt.AlignHCenter
+                                font.pixelSize: 11
+                                font.family: Kirigami.Theme.defaultFont.family
+                                font.weight: Font.Medium
+                                Layout.fillWidth: true
+                                horizontalAlignment: Text.AlignHCenter
+                                elide: Text.ElideRight
+                                text: compactRestartButton.text
+                            }
+                        }
+                        background: PunchiMenuActionBackground {
+                            highlighted: compactRestartButton.hovered
+                                || compactRestartButton.down
+                            showBaseSurface: true
+                            accentColor: Qt.rgba(0.92, 0.67, 0.18, 1)
+                        }
+                        Accessible.name: text
+                        visible: sessionController.canReboot
+                        HoverHandler { cursorShape: Qt.PointingHandCursor }
+                        onClicked: {
+                            sessionController.requestReboot()
+                            root.closeMenu()
+                        }
+                    }
+
+                    Controls.ToolButton {
+                        Layout.preferredWidth: 64
+                        Layout.minimumWidth: Layout.preferredWidth
+                        Layout.maximumWidth: Layout.preferredWidth
+                        Layout.preferredHeight: 56
+                        id: compactShutdownButton
+                        Controls.ToolTip.visible: hovered
+                        Controls.ToolTip.text: text
+                        icon.name: "system-shutdown"
+                        text: i18nc("@action:button", "Shut Down")
+                        display: Controls.AbstractButton.IconOnly
+                        contentItem: ColumnLayout {
+                            spacing: 1
+                            Kirigami.Icon {
+                                Layout.alignment: Qt.AlignHCenter
+                                Layout.preferredWidth: 24
+                                Layout.preferredHeight: 24
+                                source: "system-shutdown"
+                                color: Kirigami.Theme.negativeTextColor
+                            }
+                            Controls.Label {
+                                Layout.alignment: Qt.AlignHCenter
+                                font.pixelSize: 11
+                                font.family: Kirigami.Theme.defaultFont.family
+                                font.weight: Font.Medium
+                                Layout.fillWidth: true
+                                horizontalAlignment: Text.AlignHCenter
+                                elide: Text.ElideRight
+                                text: compactShutdownButton.text
+                            }
+                        }
+                        background: PunchiMenuActionBackground {
+                            highlighted: compactShutdownButton.hovered || compactShutdownButton.down
+                            showBaseSurface: true
+                            accentColor: Kirigami.Theme.negativeTextColor
+                        }
+                        Accessible.name: text
+                        visible: sessionController.canShutdown
+                        HoverHandler { cursorShape: Qt.PointingHandCursor }
+                        onClicked: {
+                            sessionController.requestShutdown()
+                            root.closeMenu()
+                        }
+                    }
+
+
+
+                }
+            }
+
+            // Inline Settings View
+            PunchiMenuCompactSettingsView {
+                anchors.fill: parent
+                visible: root.settingsViewActive
+                backgroundBlurEnabled: root.backgroundBlurEnabled
+                backgroundOpacityPercent: Math.round(root.safeBackgroundOpacity * 100)
+                sortApplicationsAlphabetically: root.sortApplicationsAlphabetically
+                compactShowQuickLaunchers: root.compactShowQuickLaunchers
+                normalPanelDistancePercent:
+                    root.normalPanelDistancePercent
+                hoverAnimation: root.hoverAnimation
+                performanceMode: root.performanceMode
+                performanceThreshold: root.performanceThreshold
+                showApplicationLabels: root.showApplicationLabels
+                applicationIconScalePercent: 100
+                favoriteIconScalePercent: 100
+                folderMaximumColumns: 3
+                folderMaximumRows: 3
+
+                onSettingChanged: function(fieldName, value) {
+                    root.settingChangeRequested(fieldName, value)
+                }
+
+                onReturnToMenuRequested: {
+                    root.settingsViewActive = false
+                    searchField.forceActiveFocus()
+                }
+            }
+        }
+
+        // Vertical Separator between Main column and Flyout
+        Kirigami.Separator {
+            Layout.fillHeight: true
+            visible: root.flyoutVisible
+        }
+
+        // Submenu Flyout Panel
+        PunchiMenuCompactFlyout {
+            id: flyoutPanel
+            Layout.preferredWidth: root.flyoutWidth
+            Layout.fillHeight: true
+            visible: root.flyoutVisible
+            applicationList: root.activeCategoryApps
+            categoryTitle: root.activeCategoryTitle
+            motionEnabled: root.motionEnabled
+            hoverAnimation: root.efficientHoverAnimation
+            backgroundOpacity: root.safeBackgroundOpacity
+            backgroundBlurEnabled: root.backgroundBlurEnabled
+
+            onApplicationActivated: function(storageId) {
+                root.launchApplication(storageId)
+            }
+
+            onApplicationContextRequested: function(sourceItem, application, x, y) {
+                root.openApplicationContextMenu(sourceItem, application, x, y)
+                root.applicationContextRequested(sourceItem, application, x, y)
+            }
+
+            onReturnToParentRequested: {
+                categoryListView.forceActiveFocus()
+            }
+        }
+    }
+}
+
+    PunchiMenuContextSurface {
+        id: applicationContextMenuSurface
+        anchors.fill: parent
+        z: 300
+
+        onActionTriggered: function(actionId) {
+            root.activateContextMenuAction(actionId)
+        }
+        onCloseRequested: function(restoreFocus) {
+            root.closeApplicationContextMenu(restoreFocus)
+        }
+        onFocusFallbackRequested: {
+            if (flyoutPanel.visible) {
+                flyoutPanel.forceActiveFocus()
+            }
+        }
+    }
+}

@@ -1,0 +1,203 @@
+import QtQuick
+import org.kde.kirigami as Kirigami
+import org.kde.plasma.core as PlasmaCore
+
+QtObject {
+    id: root
+
+    property bool inPanel: false
+    property string placementMode: "anchored"
+    property int panelLocation: PlasmaCore.Types.BottomEdge
+    property rect availableScreenRect: Qt.rect(0, 0, 1, 1)
+    property rect screenGeometry: Qt.rect(0, 0, 1, 1)
+    property var itemAnchor: null
+    property var floatingDockAnchor: null
+    property var panelWindow: null
+    property real panelThickness: 0
+    property real menuWidth: 1
+    property real menuHeight: 1
+    property real horizontalAnchorWidth: menuWidth
+    property real panelGap: 0
+    property real floatingGap: 0
+    readonly property real minimumPanelGap: 0 // rely on native Plasma frame margins
+    property real screenInset: 0
+    property real themeFrameLeftMargin: 0
+    property real themeFrameTopMargin: 0
+    property real themeFrameRightMargin: 0
+    property real themeFrameBottomMargin: 0
+    property real surfaceFrameLeftMargin: 0
+    property real surfaceFrameTopMargin: 0
+    property real surfaceFrameRightMargin: 0
+    property real surfaceFrameBottomMargin: 0
+
+    function finiteNumber(value, fallback) {
+        const numericValue = Number(value)
+        return Number.isFinite(numericValue) ? numericValue : fallback
+    }
+
+    function validRect(rectangle) {
+        return rectangle
+            && Number.isFinite(Number(rectangle.x))
+            && Number.isFinite(Number(rectangle.y))
+            && Number.isFinite(Number(rectangle.width))
+            && Number.isFinite(Number(rectangle.height))
+            && Number(rectangle.width) > 0
+            && Number(rectangle.height) > 0
+    }
+
+    function globalItemRect(item) {
+        if (!item || typeof item.mapToGlobal !== "function") {
+            return Qt.rect(0, 0, 0, 0)
+        }
+
+        try {
+            const firstPoint = item.mapToGlobal(Qt.point(0, 0))
+            const secondPoint = item.mapToGlobal(Qt.point(
+                Math.max(0, root.finiteNumber(item.width, 0)),
+                Math.max(0, root.finiteNumber(item.height, 0))))
+            const left = Math.min(firstPoint.x, secondPoint.x)
+            const top = Math.min(firstPoint.y, secondPoint.y)
+            return Qt.rect(left, top,
+                Math.abs(secondPoint.x - firstPoint.x),
+                Math.abs(secondPoint.y - firstPoint.y))
+        } catch (error) {
+            return Qt.rect(0, 0, 0, 0)
+        }
+    }
+
+    function globalWindowRect(window) {
+        if (!window) {
+            return Qt.rect(0, 0, 0, 0)
+        }
+
+        const rectangle = Qt.rect(
+            root.finiteNumber(window.x, 0),
+            root.finiteNumber(window.y, 0),
+            Math.max(0, root.finiteNumber(window.width, 0)),
+            Math.max(0, root.finiteNumber(window.height, 0)))
+        return root.validRect(rectangle) ? rectangle : Qt.rect(0, 0, 0, 0)
+    }
+
+    function absoluteAvailableRect() {
+        const available = root.availableScreenRect
+        const screen = root.screenGeometry
+        if (root.validRect(available) && root.validRect(screen)) {
+            return Qt.rect(screen.x + available.x, screen.y + available.y,
+                available.width, available.height)
+        }
+        if (root.validRect(screen)) {
+            return screen
+        }
+        return root.validRect(available) ? available : Qt.rect(0, 0, 1, 1)
+    }
+
+    function surfaceRect(anchorRectangle) {
+        if (root.inPanel) {
+            const panelRectangle = root.globalWindowRect(root.panelWindow)
+            if (root.validRect(panelRectangle)) {
+                return panelRectangle
+            }
+            const screen = root.screenGeometry
+            const thickness = Math.max(0, root.finiteNumber(
+                root.panelThickness, 0))
+            if (root.validRect(screen) && thickness > 0) {
+                if (root.panelLocation === PlasmaCore.Types.TopEdge) {
+                    return Qt.rect(screen.x, screen.y, screen.width, thickness)
+                }
+                if (root.panelLocation === PlasmaCore.Types.BottomEdge) {
+                    return Qt.rect(screen.x,
+                        screen.y + screen.height - thickness,
+                        screen.width, thickness)
+                }
+                if (root.panelLocation === PlasmaCore.Types.LeftEdge) {
+                    return Qt.rect(screen.x, screen.y, thickness, screen.height)
+                }
+                return Qt.rect(screen.x + screen.width - thickness,
+                    screen.y, thickness, screen.height)
+            }
+        } else {
+            const dockRectangle = root.globalItemRect(root.floatingDockAnchor)
+            if (root.validRect(dockRectangle)) {
+                return dockRectangle
+            }
+        }
+        return anchorRectangle
+    }
+
+    function clamp(value, minimum, maximum) {
+        return Math.max(minimum, Math.min(Math.max(minimum, maximum), value))
+    }
+
+    function calculatePosition() {
+        const available = root.absoluteAvailableRect()
+        const width = Math.max(1, root.finiteNumber(root.menuWidth, 1))
+        const height = Math.max(1, root.finiteNumber(root.menuHeight, 1))
+        const horizontalAnchorWidth = Math.min(width, Math.max(1,
+            root.finiteNumber(root.horizontalAnchorWidth, width)))
+        const inset = Math.max(0, root.finiteNumber(root.screenInset, 0))
+        const minimumX = available.x + inset
+        const minimumY = available.y + inset
+        const maximumX = available.x + available.width - inset - width
+        const maximumY = available.y + available.height - inset - height
+
+        if (root.placementMode === "centered") {
+            return Qt.point(
+                Math.round(root.clamp(
+                    available.x + (available.width - width) / 2,
+                    minimumX, maximumX)),
+                Math.round(root.clamp(
+                    available.y + (available.height - height) / 2,
+                    minimumY, maximumY)))
+        }
+
+        let anchorRectangle = root.globalItemRect(root.itemAnchor)
+        const fallbackSurface = root.surfaceRect(anchorRectangle)
+        if (!root.validRect(anchorRectangle)) {
+            anchorRectangle = root.validRect(fallbackSurface)
+                ? fallbackSurface : available
+        }
+        const surface = root.validRect(fallbackSurface)
+            ? fallbackSurface : anchorRectangle
+        const requestedGap = Math.max(0, root.inPanel
+            ? root.finiteNumber(root.panelGap, 0)
+            : root.finiteNumber(root.floatingGap, 0))
+        const gap = root.inPanel
+            ? Math.max(root.minimumPanelGap, requestedGap)
+            : requestedGap
+        const surfaceLeftInset = Math.max(0, root.finiteNumber(
+            root.surfaceFrameLeftMargin, 0))
+        const surfaceTopInset = Math.max(0, root.finiteNumber(
+            root.surfaceFrameTopMargin, 0))
+        const surfaceRightInset = Math.max(0, root.finiteNumber(
+            root.surfaceFrameRightMargin, 0))
+        const surfaceBottomInset = Math.max(0, root.finiteNumber(
+            root.surfaceFrameBottomMargin, 0))
+        const availableCenterX = available.x + available.width / 2
+        const availableCenterY = available.y + available.height / 2
+        const anchorCenterX = anchorRectangle.x + anchorRectangle.width / 2
+        const anchorCenterY = anchorRectangle.y + anchorRectangle.height / 2
+        let targetX = anchorRectangle.x
+        let targetY = anchorRectangle.y
+
+        if (root.panelLocation === PlasmaCore.Types.TopEdge
+                || root.panelLocation === PlasmaCore.Types.BottomEdge) {
+            targetX = anchorCenterX - horizontalAnchorWidth / 2
+            targetY = root.panelLocation === PlasmaCore.Types.TopEdge
+                ? surface.y + surface.height - surfaceBottomInset
+                    + gap - root.themeFrameTopMargin
+                : surface.y + surfaceTopInset - height
+                    - gap + root.themeFrameBottomMargin
+        } else {
+            targetX = root.panelLocation === PlasmaCore.Types.LeftEdge
+                ? surface.x + surface.width - surfaceRightInset
+                    + gap - root.themeFrameLeftMargin
+                : surface.x + surfaceLeftInset - width
+                    - gap + root.themeFrameRightMargin
+            targetY = anchorCenterY - height / 2
+        }
+
+        return Qt.point(
+            Math.round(root.clamp(targetX, minimumX, maximumX)),
+            Math.round(root.clamp(targetY, minimumY, maximumY)))
+    }
+}

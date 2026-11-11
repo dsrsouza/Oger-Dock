@@ -1,0 +1,324 @@
+import QtQuick
+import QtQuick.Controls as Controls
+import QtQuick.Layouts
+import org.kde.kcmutils as KCM
+import org.kde.kirigami as Kirigami
+import org.kde.plasma.core as PlasmaCore
+import org.kde.plasma.plasmoid
+import "components"
+
+KCM.SimpleKCM {
+    id: page
+
+    // R62.6: immediate category switch; do not animate the entire KCM.
+    // Whole-page transforms cannot shorten control creation and cost frames.
+
+    // R58.1: only this applet's configuration pages request maximized mode.
+    // The KDE-owned window still handles its own close/minimize/Save dialog.
+    ConfigMaximizedWindowGuard {
+        hostWindow: page.Window.window
+        diagnosticCategory: "Rato"
+    }
+    implicitWidth: layoutMetrics.pageImplicitWidth
+
+    ConfigLayoutMetrics {
+        id: layoutMetrics
+        availableWidth: page.width
+    }
+
+    property string cfg_hoverAnimation: "wave"
+    property alias cfg_hoverScale: hoverScaleSlider.value
+    property string cfg_clickEffect: "bounce"
+    property string cfg_windowMinimizeEffect: "none"
+    property alias cfg_dockMotionSpeedPercent: dockMotionSpeedSlider.value
+    property alias cfg_wheelSwitchWindowsEnabled: wheelSwitchWindowsCheck.checked
+    property alias cfg_wheelSwitchWindowsReverse: wheelSwitchWindowsReverseCheck.checked
+    property alias cfg_wheelSwitchMaximizeNext: wheelSwitchMaximizeNextCheck.checked
+    property alias cfg_enableAppDragAndDrop: enableAppDragAndDropCheck.checked
+    property alias cfg_enableFloatingItemDragReordering:
+        enableFloatingItemDragReorderingCheck.checked
+    readonly property int contentWidthHint: layoutMetrics.contentWidth
+    readonly property int selectorWidthHint: layoutMetrics.selectorWidth
+    readonly property bool inPanel:
+        Plasmoid.formFactor === PlasmaCore.Types.Horizontal
+        || Plasmoid.formFactor === PlasmaCore.Types.Vertical
+    property string cfg_dockThemeMode: "plasma"
+    readonly property bool customThemeActiveInPanel: inPanel
+        && ((cfg_dockThemeMode === "custom") || (String(Plasmoid.configuration.dockThemeMode || "") === "custom"))
+    readonly property int hoverEnlargementPercent:
+        Math.round((hoverScaleSlider.value - 1.0) * 100)
+    readonly property bool hoverEnlargementDisabled:
+        hoverEnlargementPercent <= 0
+    readonly property bool hoverEnlargementMayBeClipped:
+        inPanel && !customThemeActiveInPanel
+    readonly property var hoverAnimationOptions: [
+        { "text": i18n("None"), "value": "none" }, // qmllint disable unqualified
+        { "text": i18n("Wave"), "value": "wave" }, // qmllint disable unqualified
+        { "text": i18n("Single"), "value": "single" }, // qmllint disable unqualified
+        { "text": i18n("Axis zoom"), "value": "axisZoom" }, // qmllint disable unqualified
+        { "text": i18n("Pulse"), "value": "selectionPulse" } // qmllint disable unqualified
+    ]
+    readonly property var clickEffectOptions: [
+        { "text": i18n("None"), "value": "none" }, // qmllint disable unqualified
+        { "text": i18n("Pulse"), "value": "pulse" }, // qmllint disable unqualified
+        { "text": i18n("Press"), "value": "press" }, // qmllint disable unqualified
+        { "text": i18n("Bounce"), "value": "bounce" }, // qmllint disable unqualified
+        { "text": i18nc("@item:inlistbox click effect", "Side collision"), "value": "collision" } // qmllint disable unqualified
+    ]
+    // qmllint disable unqualified
+    readonly property var windowMinimizeEffectOptions: [
+        { "text": i18n("None"), "value": "none" },
+        { "text": i18n("Slow bounce"), "value": "slowBounce" },
+        { "text": i18n("Lateral ripple"), "value": "lateralRipple" }
+    ]
+    // qmllint enable unqualified
+
+    function syncComboValue(combo, value) {
+        if (!combo) {
+            return
+        }
+
+        const resolvedIndex = Math.max(0, combo.indexOfValue(value))
+        if (combo.currentIndex !== resolvedIndex) {
+            combo.currentIndex = resolvedIndex
+        }
+    }
+
+    function syncMouseSelectors() {
+        if (page.cfg_hoverAnimation === "paragraph") {
+            page.cfg_hoverAnimation = "selectionPulse"
+            return
+        }
+        syncComboValue(hoverAnimationCombo, page.cfg_hoverAnimation)
+        syncComboValue(clickEffectCombo, page.cfg_clickEffect)
+        syncComboValue(windowMinimizeEffectCombo, page.cfg_windowMinimizeEffect)
+    }
+
+    onCfg_hoverAnimationChanged: syncMouseSelectors()
+    onCfg_clickEffectChanged: syncMouseSelectors()
+    onCfg_windowMinimizeEffectChanged: syncMouseSelectors()
+    Component.onCompleted: syncMouseSelectors()
+
+    Kirigami.FormLayout {
+        RowLayout {
+            Kirigami.FormData.label: i18n("Hover animation:") // qmllint disable unqualified
+            Layout.maximumWidth: page.contentWidthHint
+
+            Controls.ComboBox {
+                id: hoverAnimationCombo
+                Layout.preferredWidth: page.selectorWidthHint
+                Layout.maximumWidth: page.selectorWidthHint
+                textRole: "text"
+                valueRole: "value"
+                model: page.hoverAnimationOptions
+                onActivated: {
+                    if (page.cfg_hoverAnimation !== currentValue) {
+                        page.cfg_hoverAnimation = currentValue
+                    }
+                }
+
+            }
+        }
+
+        RowLayout {
+            // Plasma injects i18n through KLocalizedContext at runtime.
+            // qmllint disable unqualified
+            Kirigami.FormData.label: i18n("Hover enlargement:")
+            // qmllint enable unqualified
+            Layout.maximumWidth: page.contentWidthHint
+
+            Controls.Slider {
+                id: hoverScaleSlider
+                from: 1.0
+                to: 2.0
+                stepSize: 0.05
+                Layout.fillWidth: true
+                Layout.preferredWidth: page.contentWidthHint - 60
+                // qmllint disable unqualified
+                Accessible.name: i18n("Hover enlargement")
+                Accessible.description: i18n("Adjusts additional hover enlargement between 0 and 100 percent.")
+                // qmllint enable unqualified
+
+            }
+
+            Controls.Label {
+                // qmllint disable unqualified
+                text: i18n("%1%", page.hoverEnlargementPercent)
+                // qmllint enable unqualified
+                font.bold: true
+                Layout.preferredWidth: 50
+            }
+        }
+
+        Kirigami.InlineMessage {
+            Layout.fillWidth: true
+            Layout.maximumWidth: page.contentWidthHint
+            visible: page.hoverEnlargementDisabled
+                || page.hoverEnlargementMayBeClipped
+            type: Kirigami.MessageType.Warning
+            // qmllint disable unqualified
+            text: page.hoverEnlargementDisabled
+                ? i18n("At 0%, the hover enlargement animation is disabled.")
+                : i18n("Plasma panels limit hover enlargement to 65% and reduce it further when the custom panel size requires it. With an active custom JSON theme, these limits do not apply.")
+            // qmllint enable unqualified
+        }
+
+        RowLayout {
+            Kirigami.FormData.label: i18n("Dock motion speed:") // qmllint disable unqualified
+            Layout.maximumWidth: page.contentWidthHint
+
+            Controls.Slider {
+                id: dockMotionSpeedSlider
+                from: 50
+                to: 150
+                stepSize: 25
+                snapMode: Controls.Slider.SnapAlways
+                Layout.fillWidth: true
+                Layout.preferredWidth: page.contentWidthHint - 64
+                Accessible.name: i18n("Dock motion speed") // qmllint disable unqualified
+                Accessible.description: i18n("Controls how quickly dock items enter, move, and resize. It does not change popup or menu animations.") // qmllint disable unqualified
+
+            }
+
+            Controls.Label {
+                text: i18n("%1%", Math.round(dockMotionSpeedSlider.value)) // qmllint disable unqualified
+                horizontalAlignment: Text.AlignRight
+                Layout.preferredWidth: 56
+            }
+        }
+
+        Controls.Label {
+            text: i18n("100% preserves the current timing. Lower values are slower and higher values are faster.") // qmllint disable unqualified
+            wrapMode: Text.WordWrap
+            Layout.fillWidth: true
+            Layout.maximumWidth: page.contentWidthHint
+            leftPadding: layoutMetrics.helperIndent
+            color: Kirigami.Theme.disabledTextColor
+        }
+
+        RowLayout {
+            Kirigami.FormData.label: i18n("Click effect:") // qmllint disable unqualified
+            Layout.maximumWidth: page.contentWidthHint
+
+            Controls.ComboBox {
+                id: clickEffectCombo
+                Layout.preferredWidth: page.selectorWidthHint
+                Layout.maximumWidth: page.selectorWidthHint
+                textRole: "text"
+                valueRole: "value"
+                model: page.clickEffectOptions
+                onActivated: {
+                    if (page.cfg_clickEffect !== currentValue) {
+                        page.cfg_clickEffect = currentValue
+                    }
+                }
+
+            }
+        }
+
+        // qmllint disable unqualified
+        RowLayout {
+            Kirigami.FormData.label: i18n("Window minimize effect:")
+            Layout.maximumWidth: page.contentWidthHint
+
+            Controls.ComboBox {
+                id: windowMinimizeEffectCombo
+                Layout.preferredWidth: page.selectorWidthHint
+                Layout.maximumWidth: page.selectorWidthHint
+                textRole: "text"
+                valueRole: "value"
+                model: page.windowMinimizeEffectOptions
+                onActivated: {
+                    if (page.cfg_windowMinimizeEffect !== currentValue) {
+                        page.cfg_windowMinimizeEffect = currentValue
+                    }
+                }
+
+            }
+        }
+
+        Controls.Label {
+            text: i18n("Animates the matching dock item when a window is minimized. Lateral ripple also moves the nearest items.")
+            wrapMode: Text.WordWrap
+            Layout.fillWidth: true
+            Layout.maximumWidth: page.contentWidthHint
+            leftPadding: layoutMetrics.helperIndent
+            color: Kirigami.Theme.disabledTextColor
+        }
+        // qmllint enable unqualified
+
+
+        Controls.CheckBox {
+            id: wheelSwitchWindowsCheck
+            Kirigami.FormData.label: i18n("Mouse wheel:") // qmllint disable unqualified
+            text: i18n("Switch between open windows when scrolling over the dock") // qmllint disable unqualified
+            Layout.maximumWidth: page.contentWidthHint
+        }
+
+        Controls.CheckBox {
+            id: wheelSwitchWindowsReverseCheck
+            text: i18n("Reverse window switching direction") // qmllint disable unqualified
+            enabled: wheelSwitchWindowsCheck.checked
+            Layout.maximumWidth: page.contentWidthHint
+        }
+
+        // Legacy configuration kept for old KConfig migrations; never exposed
+        // again because scroll must preserve each window's existing size.
+        Controls.CheckBox {
+            id: wheelSwitchMaximizeNextCheck
+            visible: false
+            enabled: false
+            checked: false
+        }
+
+        Controls.Label {
+            text: i18n("Scrolling minimizes the previous window and restores the next at its original size and position. Stacked folders and media controls keep their own scrolling.") // qmllint disable unqualified
+            wrapMode: Text.WordWrap
+            Layout.fillWidth: true
+            Layout.maximumWidth: page.contentWidthHint
+            leftPadding: layoutMetrics.helperIndent
+            color: Kirigami.Theme.disabledTextColor
+        }
+
+        // qmllint disable unqualified
+        Controls.CheckBox {
+            id: enableAppDragAndDropCheck
+            Kirigami.FormData.label: i18n("Application file drop:")
+            text: i18n("Enable file drag and drop onto application icons")
+            Layout.maximumWidth: page.contentWidthHint
+
+        }
+
+        Controls.Label {
+            text: i18n("When disabled, application icons ignore dragged files. The Trash can still receive files.")
+            wrapMode: Text.WordWrap
+            Layout.fillWidth: true
+            Layout.maximumWidth: page.contentWidthHint
+            leftPadding: layoutMetrics.helperIndent
+            color: Kirigami.Theme.disabledTextColor
+        }
+        // qmllint enable unqualified
+
+        // qmllint disable unqualified
+        Controls.CheckBox {
+            id: enableFloatingItemDragReorderingCheck
+            Kirigami.FormData.label: i18n("Floating Dock reordering:")
+            visible: !page.inPanel
+            text: i18n("Enable press-and-hold item reordering")
+            Layout.maximumWidth: page.contentWidthHint
+
+        }
+
+        Controls.Label {
+            visible: !page.inPanel
+            text: i18n("Disabled by default because Plasma uses press and hold to enter widget editing in floating mode.")
+            wrapMode: Text.WordWrap
+            Layout.fillWidth: true
+            Layout.maximumWidth: page.contentWidthHint
+            leftPadding: layoutMetrics.helperIndent
+            color: Kirigami.Theme.disabledTextColor
+        }
+        // qmllint enable unqualified
+
+    }
+}

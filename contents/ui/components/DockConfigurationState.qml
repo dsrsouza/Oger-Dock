@@ -1,0 +1,419 @@
+import QtQuick
+import org.kde.plasma.plasmoid
+import "../org/punchi/dock" as Punchi
+
+QtObject {
+    id: root
+
+    readonly property Punchi.PopupAppearanceDefaults appearanceDefaults: Punchi.PopupAppearanceDefaults {
+        applet: Plasmoid
+    }
+
+    function normalizedPopupDistancePercent(value, fallbackValue) {
+        const requestedPercent = Number(value)
+        const fallbackPercent = Number(fallbackValue)
+        const safePercent = Number.isFinite(requestedPercent)
+            ? requestedPercent
+            : (Number.isFinite(fallbackPercent) ? fallbackPercent : 0)
+        return Math.max(0, Math.min(100,
+            Math.round(safePercent / 5) * 5))
+    }
+
+    function legacyFolderPopupDistancePercent() {
+        const legacyDistance = Number(
+            Plasmoid.configuration.folderPopupExtraDistance)
+        const safeLegacyDistance = Number.isFinite(legacyDistance)
+            ? Math.max(0, Math.min(32, legacyDistance))
+            : 0
+        return root.normalizedPopupDistancePercent(
+            safeLegacyDistance * 100 / 32, 0)
+    }
+
+    property bool inPanel: false
+    property bool horizontalPanel: false
+    property int effectiveIconSize: 48
+    property bool themeRepositoryValid: false
+    property var theme: ({})
+    readonly property bool showRecentApplications: Plasmoid.configuration.showRecentApplications !== false
+    readonly property int recentApplicationsCount: {
+        const count = Number(Plasmoid.configuration.recentApplicationsCount)
+        return Number.isFinite(count) ? Math.max(1, Math.min(20, Math.round(count))) : 5
+    }
+    readonly property string recentApplicationsMode: Plasmoid.configuration.recentApplicationsMode === "inline"
+        ? "inline" : "container"
+    readonly property string recentApplicationsContainerLayout: {
+        const layout = String(Plasmoid.configuration.recentApplicationsContainerLayout || "fan")
+        return ["grid", "list", "detailed", "fan"].indexOf(layout) >= 0 ? layout : "fan"
+    }
+
+    function disableRecentApplications() {
+        if (!root.showRecentApplications) {
+            return false
+        }
+        Plasmoid.configuration.showRecentApplications = false
+        const writeConfig = Plasmoid.configuration.writeConfig
+        writeConfig()
+        return true
+    }
+
+    function setRecentApplicationsContainerLayout(layout) {
+        if (!root.showRecentApplications || root.recentApplicationsMode !== "container"
+                || ["grid", "list", "detailed", "fan"].indexOf(layout) < 0) {
+            return false
+        }
+        Plasmoid.configuration.recentApplicationsContainerLayout = layout
+        const writeConfig = Plasmoid.configuration.writeConfig
+        writeConfig()
+        return true
+    }
+
+    readonly property string windowPreviewStyle: String(Plasmoid.configuration.windowPreviewStyle || "card")
+    readonly property string mediaControlsMode: {
+        const mode = String(Plasmoid.configuration.mediaControlsMode || "")
+        if (mode === "none" || mode === "card" || mode === "fullCard" || mode === "overlay") {
+            return mode === "overlay" && windowPreviewStyle === "none" ? "none" : mode
+        }
+        return Plasmoid.configuration.mediaControlsOnHover === true ? "card" : "none"
+    }
+    readonly property bool mediaControlsOnHover: mediaControlsMode !== "none"
+    readonly property bool appDragAndDropEnabled:
+        Plasmoid.configuration.enableAppDragAndDrop !== false
+    readonly property bool floatingItemDragReorderingEnabled:
+        Plasmoid.configuration.enableFloatingItemDragReordering === true
+    readonly property int dockMotionSpeedPercent: {
+        const configuredPercent = Number(Plasmoid.configuration.dockMotionSpeedPercent)
+        const safePercent = Number.isFinite(configuredPercent) ? configuredPercent : 100
+        return Math.max(50, Math.min(150, Math.round(safePercent)))
+    }
+    readonly property real windowPreviewScale: Math.max(1.5, Math.min(4.5,
+        Number(Plasmoid.configuration.windowPreviewScale || 1.5)))
+    readonly property real windowPreviewBackgroundOpacity: {
+        const requestedPercent = Number(
+            Plasmoid.configuration.windowPreviewBackgroundOpacityPercent)
+        const safePercent = Number.isFinite(requestedPercent)
+            ? Math.max(50, Math.min(100,
+                Math.round(requestedPercent / 5) * 5))
+            : root.appearanceDefaults.popupOpacityPercent
+        return safePercent / 100
+    }
+    readonly property real mediaCardBackgroundOpacity: {
+        const requestedPercent = Number(
+            Plasmoid.configuration.mediaCardBackgroundOpacityPercent)
+        const safePercent = Number.isFinite(requestedPercent)
+            ? Math.max(50, Math.min(100,
+                Math.round(requestedPercent / 5) * 5))
+            : root.appearanceDefaults.popupOpacityPercent
+        return safePercent / 100
+    }
+    readonly property string windowPreviewFrameSize: {
+        const size = String(Plasmoid.configuration.windowPreviewFrameSize || "thin")
+        return size === "medium" || size === "wide" ? size : "thin"
+    }
+    readonly property real windowPreviewFrameScale:
+        windowPreviewFrameSize === "wide"
+            ? 2.0
+            : (windowPreviewFrameSize === "medium" ? 1.5 : 1.0)
+    readonly property string windowPreviewInfoMode: {
+        const mode = String(Plasmoid.configuration.windowPreviewInfoMode || "full")
+        return mode === "icon" || mode === "none" ? mode : "full"
+    }
+    readonly property int maxPopupRows: Math.max(1, Math.min(8,
+        Number(Plasmoid.configuration.maxPopupRows || 4)))
+    readonly property bool windowPreviewTextShadowsEnabled:
+        Plasmoid.configuration.windowPreviewTextShadowsEnabled === true
+    readonly property bool popupTextShadowsEnabled:
+        Plasmoid.configuration.popupTextShadowsEnabled !== false
+    // Amount of the text shadow of the folder popups, in percent. Zero removes
+    // the shadow completely, so the value cannot fall back on a default when it
+    // is present: only a missing or unusable value does.
+    readonly property int folderPopupTextShadowPercent: {
+        const requestedPercent = Number(
+            Plasmoid.configuration.folderPopupTextShadowPercent)
+        if (!Number.isFinite(requestedPercent)) {
+            return 25
+        }
+        return Math.max(0, Math.min(100,
+            Math.round(requestedPercent / 5) * 5))
+    }
+    readonly property real contextMenuBackgroundOpacity: {
+        const requestedPercent = Number(
+            Plasmoid.configuration.contextMenuBackgroundOpacityPercent)
+        const safePercent = Number.isFinite(requestedPercent)
+            ? Math.max(50, Math.min(100,
+                Math.round(requestedPercent / 5) * 5))
+            : 100
+        return safePercent / 100
+    }
+    readonly property bool contextMenuBackgroundBlurEnabled:
+        Plasmoid.configuration.contextMenuBackgroundBlurEnabled === true
+    readonly property bool menuTextShadowsEnabled:
+        Plasmoid.configuration.menuTextShadowsEnabled === true
+
+    readonly property int folderGridIconSize: Math.max(24, Math.min(64,
+        Number(Plasmoid.configuration.folderGridIconSize || 42)))
+    readonly property string folderFanMotionStyle: {
+        const mode = String(Plasmoid.configuration.folderFanMotionStyle || "fan")
+        return ["fan", "cascade", "stack", "none"].indexOf(mode) >= 0
+            ? mode : "fan"
+    }
+    readonly property bool folderGridAutoLayout:
+        Plasmoid.configuration.folderGridAutoLayout !== false
+    readonly property int folderGridColumns: Math.max(1, Math.min(8,
+        Number(Plasmoid.configuration.folderGridColumns || 3)))
+    readonly property int folderGridRows: Math.max(1, Math.min(8,
+        Number(Plasmoid.configuration.folderGridRows || 4)))
+    readonly property bool folderGridShowLabels:
+        Plasmoid.configuration.folderGridShowLabels !== false
+    readonly property string folderGridFontFamily:
+        String(Plasmoid.configuration.folderGridFontFamily || "")
+    readonly property int folderGridFontSize: Math.max(8, Math.min(18,
+        Number(Plasmoid.configuration.folderGridFontSize || 9)))
+
+    readonly property int folderListIconSize: Math.max(24, Math.min(64,
+        Number(Plasmoid.configuration.folderListIconSize || 42)))
+    readonly property int folderListRows: Math.max(1, Math.min(8,
+        Number(Plasmoid.configuration.folderListRows || 4)))
+    readonly property bool folderListShowLabels:
+        Plasmoid.configuration.folderListShowLabels !== false
+    readonly property string folderListFontFamily:
+        String(Plasmoid.configuration.folderListFontFamily || "")
+    readonly property int folderListFontSize: Math.max(8, Math.min(18,
+        Number(Plasmoid.configuration.folderListFontSize || 10)))
+
+    readonly property int folderDetailedIconSize: Math.max(24, Math.min(64,
+        Number(Plasmoid.configuration.folderDetailedIconSize || 42)))
+    readonly property int folderDetailedRows: Math.max(1, Math.min(8,
+        Number(Plasmoid.configuration.folderDetailedRows || 4)))
+    readonly property bool folderDetailedShowLabels:
+        Plasmoid.configuration.folderDetailedShowLabels !== false
+    readonly property string folderDetailedFontFamily:
+        String(Plasmoid.configuration.folderDetailedFontFamily || "")
+    readonly property int folderDetailedFontSize: Math.max(8, Math.min(18,
+        Number(Plasmoid.configuration.folderDetailedFontSize || 10)))
+
+    readonly property int folderFanIconSize: Math.max(24, Math.min(64,
+        Number(Plasmoid.configuration.folderFanIconSize || 42)))
+    readonly property int folderFanRows: Math.max(1, Math.min(8,
+        Number(Plasmoid.configuration.folderFanRows || 6)))
+    readonly property bool folderFanShowLabels:
+        Plasmoid.configuration.folderFanShowLabels !== false
+    readonly property string folderFanFontFamily:
+        String(Plasmoid.configuration.folderFanFontFamily || "")
+    readonly property int folderFanFontSize: Math.max(8, Math.min(18,
+        Number(Plasmoid.configuration.folderFanFontSize || 10)))
+    // The fan is static by default: a missing key resolves to `false` on
+    // purpose, so every existing installation starts with no scrolling.
+    readonly property bool folderFanScrollEnabled:
+        Plasmoid.configuration.folderFanScrollEnabled === true
+    readonly property int folderPopupDistancePercent: {
+        const configuredPercent = Number(
+            Plasmoid.configuration.folderPopupDistancePercent)
+        return Number.isFinite(configuredPercent) && configuredPercent >= 0
+            ? root.normalizedPopupDistancePercent(configuredPercent, 0)
+            : root.legacyFolderPopupDistancePercent()
+    }
+    readonly property real folderPopupScale: Math.max(0.5, Math.min(3.0,
+        Number(Plasmoid.configuration.folderPopupScale || 1.5)))
+    readonly property real folderPopupBackgroundOpacity: {
+        const requestedPercent = Number(
+            Plasmoid.configuration.folderPopupBackgroundOpacityPercent)
+        const safePercent = Number.isFinite(requestedPercent)
+            ? Math.max(50, Math.min(100,
+                Math.round(requestedPercent / 5) * 5))
+            : root.appearanceDefaults.popupOpacityPercent
+        return safePercent / 100
+    }
+    readonly property bool folderPopupShowHeader:
+        Plasmoid.configuration.folderPopupShowHeader !== false
+    // Blur is requested only when the compositor provides it; the controller
+    // reports availability separately and degrades to a plain themed surface.
+    readonly property bool popupBackgroundBlurEnabled:
+        Plasmoid.configuration.popupBackgroundBlurEnabled === undefined
+            ? !root.appearanceDefaults.opaquePopupsByDefault
+            : Plasmoid.configuration.popupBackgroundBlurEnabled === true
+
+    readonly property bool dockShowLabels: !!Plasmoid.configuration.showLabels
+    readonly property bool dockTextShadowsEnabled:
+        Plasmoid.configuration.dockTextShadowsEnabled !== false
+    readonly property bool dockShowItemHoverBackground:
+        Plasmoid.configuration.showItemHoverBackground !== false
+    readonly property bool dockIconReflectionsEnabled: root.horizontalPanel
+        && !dockShowLabels
+        && !!Plasmoid.configuration.iconReflectionsEnabled
+    readonly property real dockIconReflectionOpacity: {
+        const configuredPercent = Number(Plasmoid.configuration.iconReflectionOpacity)
+        const safePercent = Number.isFinite(configuredPercent)
+            ? configuredPercent
+            : 22
+        return Math.max(5, Math.min(50, safePercent)) / 100.0
+    }
+    readonly property int dockLabelFontSize: Math.max(10,
+        Math.round(root.effectiveIconSize * 0.22))
+    readonly property int dockLabelAreaHeight: dockShowLabels
+        ? (dockLabelFontSize + 12)
+        : 0
+    readonly property string dockClickEffect: String(Plasmoid.configuration.clickEffect || "bounce")
+    readonly property string dockWindowMinimizeEffect: {
+        const configuredEffect = String(Plasmoid.configuration.windowMinimizeEffect || "none")
+        return ["none", "slowBounce", "lateralRipple"].indexOf(configuredEffect) >= 0
+            ? configuredEffect
+            : "none"
+    }
+    readonly property string dockIndicatorType: String(Plasmoid.configuration.indicatorType || "line")
+    readonly property string dockIndicatorPosition: {
+        const position = String(Plasmoid.configuration.indicatorPosition || "bottom")
+        return position === "top" ? "top" : "bottom"
+    }
+    readonly property string dockIndicatorColor: {
+        const value = String(Plasmoid.configuration.indicatorColor || "").trim()
+        return /^#[0-9a-fA-F]{6}$/.test(value) ? value : ""
+    }
+    readonly property bool windowCountBadgeEnabled:
+        Plasmoid.configuration.showWindowCountBadge === true
+    readonly property string windowCountBadgePosition: {
+        const position = String(Plasmoid.configuration.windowCountBadgePosition || "top-right")
+        return ["top-left", "top-right", "bottom-left", "bottom-right", "center"].indexOf(position) >= 0
+            ? position
+            : "top-right"
+    }
+    readonly property string windowCountEmblemColor: {
+        const value = String(Plasmoid.configuration.windowCountEmblemColor || "").trim()
+        return /^#[0-9a-fA-F]{6}$/.test(value) ? value : ""
+    }
+    readonly property real windowCountEmblemOpacity: {
+        const configuredPercent = Number(Plasmoid.configuration.windowCountEmblemOpacityPercent)
+        const safePercent = Number.isFinite(configuredPercent) ? configuredPercent : 100
+        return Math.max(60, Math.min(100, safePercent)) / 100.0
+    }
+    readonly property real windowCountEmblemScale: {
+        const configuredPercent = Number(Plasmoid.configuration.windowCountEmblemScalePercent)
+        const safePercent = Number.isFinite(configuredPercent) ? configuredPercent : 100
+        return Math.max(80, Math.min(120, safePercent)) / 100.0
+    }
+    readonly property real dockIndicatorOpacity: {
+        const configuredPercent = Number(Plasmoid.configuration.indicatorOpacity)
+        const safePercent = Number.isFinite(configuredPercent) ? configuredPercent : 100
+        return Math.max(0, Math.min(100, safePercent)) / 100.0
+    }
+    readonly property bool dockIndicatorNeonEnabled:
+        Plasmoid.configuration.indicatorNeonEnabled !== false
+    readonly property real dockIndicatorNeonIntensity: Math.max(0, Math.min(1,
+        Number(Plasmoid.configuration.indicatorNeonIntensity === undefined
+            ? 85 : Plasmoid.configuration.indicatorNeonIntensity) / 100))
+    readonly property int dockIndicatorThickness: Math.max(2,
+        Number(Plasmoid.configuration.indicatorThickness || 4))
+
+    readonly property string dockThemeMode: {
+        const configuredMode = String(Plasmoid.configuration.dockThemeMode || "plasma")
+        return configuredMode === "custom" ? "custom" : "plasma"
+    }
+    readonly property string dockThemeCustomId: String(Plasmoid.configuration.dockThemeCustomId || "")
+    readonly property bool customDockThemeActive: dockThemeMode === "custom"
+        && root.themeRepositoryValid
+    readonly property var customDockSeparatorTheme: customDockThemeActive
+        && root.theme
+        && root.theme.separator
+        ? root.theme.separator
+        : ({})
+    readonly property bool customDockSeparatorActive: String(customDockSeparatorTheme.style || "").length > 0
+    readonly property real customThemeSurfaceRadius: customDockThemeActive
+        && root.theme
+        && root.theme.surface
+        ? Math.max(0, Number(root.theme.surface.radius || 0))
+        : 0
+
+    readonly property bool audioSpectrumConfigured: Plasmoid.configuration.audioSpectrumEnabled === true
+    readonly property real audioSpectrumIntensity: Math.max(0.1, Math.min(0.6,
+        Number(Plasmoid.configuration.audioSpectrumIntensity || 35) / 100.0))
+    readonly property bool audioSpectrumUsePlasmaTheme:
+        Plasmoid.configuration.audioSpectrumUsePlasmaTheme !== false
+    readonly property int audioSpectrumBarCount: {
+        const configuredCount = Number(Plasmoid.configuration.audioSpectrumBarCount || 12)
+        return [8, 12, 16, 24, 32, 48].indexOf(configuredCount) >= 0
+            ? configuredCount
+            : 12
+    }
+    readonly property string audioSpectrumStyle: {
+        const configuredStyle = String(Plasmoid.configuration.audioSpectrumStyle || "edge")
+        const supportedStyles = ["edge", "centered", "capsules", "pixel", "cloud", "particles"]
+        return supportedStyles.indexOf(configuredStyle) >= 0 ? configuredStyle : "edge"
+    }
+    readonly property string audioSpectrumBackgroundMode: {
+        const configuredMode = String(Plasmoid.configuration.audioSpectrumBackgroundMode || "plasma")
+        return configuredMode === "spectrumOnly" ? "spectrumOnly" : "plasma"
+    }
+    readonly property string audioSpectrumOrigin: {
+        const configuredOrigin = String(Plasmoid.configuration.audioSpectrumOrigin || "bottom")
+        return configuredOrigin === "top" ? "top" : "bottom"
+    }
+    readonly property string audioSpectrumFlow: {
+        const configuredFlow = String(Plasmoid.configuration.audioSpectrumFlow || "none")
+        return ["left", "right"].indexOf(configuredFlow) >= 0 ? configuredFlow : "none"
+    }
+
+    readonly property real configuredHoverScale: Math.max(1.0,
+        Number(Plasmoid.configuration.hoverScale || 1.65))
+    readonly property real panelHoverScale: configuredHoverScale
+    readonly property string dockHoverAnimation: {
+        const configuredMode = String(Plasmoid.configuration.hoverAnimation || "wave")
+        if (configuredMode === "paragraph") {
+            return "selectionPulse"
+        }
+        const supportedModes = ["none", "wave", "single", "axisZoom", "selectionPulse"]
+        return supportedModes.indexOf(configuredMode) >= 0 ? configuredMode : "wave"
+    }
+
+    readonly property string popupAnimationStyle: {
+        const configuredStyle = String(Plasmoid.configuration.popupAnimation || "scale")
+        return ["scale", "bounce", "fade", "slide", "none"].indexOf(configuredStyle) >= 0
+            ? configuredStyle
+            : "scale"
+    }
+    readonly property int popupAnimationSpeedPercent: Math.max(10, Math.min(200,
+        Number(Plasmoid.configuration.popupAnimationSpeedPercent || 100)))
+    readonly property int popupAnimationIntensity: Math.max(10, Math.min(200,
+        Number(Plasmoid.configuration.popupAnimationIntensity || 100)))
+    readonly property string menuAnimationStyle: {
+        const configuredStyle = String(Plasmoid.configuration.menuAnimation || "fade")
+        return ["scale", "bounce", "fade", "slide", "none"].indexOf(configuredStyle) >= 0
+            ? configuredStyle
+            : "fade"
+    }
+    readonly property int menuAnimationSpeedPercent: Math.max(10, Math.min(200,
+        Number(Plasmoid.configuration.menuAnimationSpeedPercent || 125)))
+    readonly property int menuAnimationIntensity: Math.max(10, Math.min(200,
+        Number(Plasmoid.configuration.menuAnimationIntensity || 75)))
+    readonly property string windowPreviewAnimationStyle: {
+        const configuredStyle = String(
+            Plasmoid.configuration.windowPreviewAnimation || "slide")
+        return ["scale", "bounce", "fade", "slide", "none"].indexOf(configuredStyle) >= 0
+            ? configuredStyle
+            : "slide"
+    }
+    readonly property int windowPreviewAnimationSpeedPercent: Math.max(10,
+        Math.min(200, Number(
+            Plasmoid.configuration.windowPreviewAnimationSpeedPercent || 100)))
+    readonly property int windowPreviewAnimationIntensity: Math.max(10,
+        Math.min(200, Number(
+            Plasmoid.configuration.windowPreviewAnimationIntensity || 100)))
+
+    readonly property int contextMenuTransitionSpeed: Math.max(10, Math.min(200,
+        Number(Plasmoid.configuration.contextMenuTransitionSpeed || 100)))
+    readonly property string contextMenuTransitionDirection: {
+        const direction = String(
+            Plasmoid.configuration.contextMenuTransitionDirection || "fromRight")
+        return ["fromRight", "fromLeft", "fromTop", "fromBottom", "morphOnly"]
+            .indexOf(direction) >= 0 ? direction : "fromRight"
+    }
+    readonly property int contextMenuVisibleRows: Math.max(3, Math.min(15,
+        Number(Plasmoid.configuration.contextMenuVisibleRows || 6)))
+    readonly property int contextMenuRowHeight: Math.max(32, Math.min(64,
+        Number(Plasmoid.configuration.contextMenuRowHeight || 46)))
+    readonly property int contextMenuIconSize: Math.max(16, Math.min(40,
+        Number(Plasmoid.configuration.contextMenuIconSize || 26)))
+    readonly property int contextMenuWidth: Math.max(240, Math.min(520,
+        Number(Plasmoid.configuration.contextMenuWidth || 360)))
+    readonly property int contextMenuDistancePercent:
+        root.normalizedPopupDistancePercent(
+            Plasmoid.configuration.contextMenuDistancePercent, 0)
+}

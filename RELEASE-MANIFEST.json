@@ -1,0 +1,25 @@
+{
+  "name": "Oger Dock",
+  "version": "1.0.0",
+  "baseline": "R63.7",
+  "format": "source-based, local Qt/KF6 build",
+  "plasmaAppletId": "org.kde.plasma.punchi-dock-remastered",
+  "translationDomain": "plasma_applet_org.kde.plasma.punchi-dock-remastered",
+  "locales": [
+    "en",
+    "pt_BR",
+    "es",
+    "de"
+  ],
+  "authors": [
+    "Diego Souza.R",
+    "Punchisoft"
+  ],
+  "license": "GPL-3.0-or-later",
+  "installationEntrypoint": "scripts-user/setup.sh",
+  "integrationRemoved": [
+    "MEGA KWin repositioning script",
+    "Firefox download indicator",
+    "legacy A/B performance toggles"
+  ]
+}

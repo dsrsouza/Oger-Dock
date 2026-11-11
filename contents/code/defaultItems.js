@@ -1,0 +1,189 @@
+.pragma library
+
+var items = [
+    {
+        "_comment": "Oger Dock launcher item. Opens the configured application menu presentation.",
+        "type": "punchimenu",
+        "name": "OgerMenu",
+        "icon": "start-here-kde",
+        "menuMode": "normal",
+        "normalPlacementMode": "anchored",
+        "gridIconScalePercent": 100,
+        "favoriteIconScalePercent": 100,
+        "fullScreenBackgroundOpacityPercent": 50,
+        "normalBackgroundOpacityPercent": 75,
+        "normalFloatingLabelShorteningEnabled": true,
+        "normalFloatingLabelVisibleCharacters": 10,
+        "normalFloatingTextShadowsEnabled": true,
+        "normalFloatingTextShadowPercent": 25,
+        "normalWidthPercent": 55,
+        "normalHeightPercent": 65,
+        "normalPanelDistancePercent": 25
+    },
+    {
+        "_comment": "Media player item. Automatically follows the active MPRIS player.",
+        "type": "media",
+        "name": "Media player",
+        "icon": "emblem-music-symbolic"
+    },
+    {
+        "_comment": "Pinned application. Runs command and can expose optional right-click actions.",
+        "type": "app",
+        "name": "Mozilla Firefox",
+        "icon": "firefox",
+        "command": "firefox",
+        "actions": [
+            { "name": "New Window", "icon": "window-new-symbolic", "command": "firefox --new-window" },
+            { "name": "New Tab", "icon": "tab-new-symbolic", "command": "firefox --new-tab about:newtab" },
+            { "name": "Private Window", "icon": "view-private-symbolic", "command": "firefox --private-window" },
+            { "name": "Profile Manager", "icon": "preferences-desktop-user", "command": "firefox --ProfileManager" }
+        ]
+    },
+    {
+        "_comment": "Pinned application. command should be the executable or action to launch.",
+        "type": "app",
+        "name": "Konsole",
+        "icon": "utilities-terminal",
+        "command": "konsole"
+    },
+    {
+        "_comment": "Folder item. Groups common user folders and opens as a fan, like the stack row of macOS: it also ships a location so the fan closes with the action that opens that folder in the file manager out of the box.",
+        "type": "folder",
+        "name": "Home",
+        "icon": "user-home",
+        "layout": "fan",
+        "sourcePath": "~",
+        "columns": 3,
+        "rows": 0,
+        "popupMaxWidth": 0,
+        "popupMaxHeight": 0,
+        "innerIconSize": 48,
+        "showLabels": true,
+        "closeOnLaunch": true,
+        "apps": [
+            { "type": "app", "name": "Home", "icon": "user-home", "command": "xdg-open \"$HOME\"" },
+            { "type": "app", "name": "Documents", "icon": "folder-documents", "command": "xdg-open \"$(xdg-user-dir DOCUMENTS)\"" },
+            { "type": "app", "name": "Downloads", "icon": "folder-downloads", "command": "xdg-open \"$(xdg-user-dir DOWNLOAD)\"" },
+            { "type": "app", "name": "Pictures", "icon": "folder-pictures", "command": "xdg-open \"$(xdg-user-dir PICTURES)\"" },
+            { "type": "app", "name": "Music", "icon": "folder-music", "command": "xdg-open \"$(xdg-user-dir MUSIC)\"" },
+            { "type": "app", "name": "Videos", "icon": "folder-videos", "command": "xdg-open \"$(xdg-user-dir VIDEOS)\"" }
+        ]
+    },
+    {
+        "_comment": "Folder item in detailed mode. Useful for larger groups where labels and commands matter.",
+        "type": "folder",
+        "name": "LibreOffice",
+        "icon": "folder-documents",
+        "layout": "detailed",
+        "columns": 0,
+        "rows": 0,
+        "popupMaxWidth": 0,
+        "popupMaxHeight": 0,
+        "innerIconSize": 48,
+        "showLabels": true,
+        "closeOnLaunch": true,
+        "apps": [
+            { "type": "app", "name": "Writer", "icon": "libreoffice-writer", "command": "libreoffice --writer" },
+            { "type": "app", "name": "Calc", "icon": "libreoffice-calc", "command": "libreoffice --calc" },
+            { "type": "app", "name": "Impress", "icon": "libreoffice-impress", "command": "libreoffice --impress" },
+            { "type": "app", "name": "Draw", "icon": "libreoffice-draw", "command": "libreoffice --draw" },
+            { "type": "app", "name": "LibreOffice Math", "icon": "libreoffice-math", "command": "libreoffice --math" },
+            { "type": "app", "name": "LibreOffice Base", "icon": "libreoffice-base", "command": "libreoffice --base" }
+        ],
+        "sourceType": "manual",
+        "sourcePath": "",
+        "sourceCategory": "Development"
+    },
+    {
+        "_comment": "Category container in the simple list presentation. Defaults to Graphics and can be refreshed from the user's installed launchers.",
+        "type": "folder",
+        "name": "Graphics",
+        "icon": "folder-pictures",
+        "layout": "list",
+        "sourceType": "category",
+        "sourceCategory": "Graphics",
+        "columns": 0,
+        "rows": 0,
+        "popupMaxWidth": 0,
+        "popupMaxHeight": 0,
+        "innerIconSize": 48,
+        "showLabels": false,
+        "sourcePath": "",
+        "closeOnLaunch": true,
+        "apps": [
+            { "type": "app", "name": "Gwenview", "icon": "gwenview", "command": "gwenview" },
+            { "type": "app", "name": "Spectacle", "icon": "spectacle", "command": "spectacle" },
+            { "type": "app", "name": "Krita", "icon": "krita", "command": "krita" },
+            { "type": "app", "name": "Inkscape", "icon": "inkscape", "command": "inkscape" },
+            { "type": "app", "name": "GIMP", "icon": "gimp", "command": "gimp" },
+            { "type": "app", "name": "KolourPaint", "icon": "kolourpaint", "command": "kolourpaint" }
+        ]
+    },
+    {
+        "_comment": "Category container in the grid presentation. Its list is filled from the user's installed launchers on the first install and becomes a normal editable container afterwards, so the category capability is visible out of the box.",
+        "type": "folder",
+        "name": "Internet",
+        "icon": "folder-html",
+        "layout": "grid",
+        "sourceType": "category",
+        "sourceCategory": "Network",
+        "columns": 0,
+        "rows": 0,
+        "popupMaxWidth": 0,
+        "popupMaxHeight": 0,
+        "innerIconSize": 48,
+        "showLabels": true,
+        "sourcePath": "",
+        "closeOnLaunch": true,
+        "apps": [
+            { "type": "app", "name": "Firefox", "icon": "firefox", "command": "firefox" },
+            { "type": "app", "name": "KMail", "icon": "kmail", "command": "kmail" },
+            { "type": "app", "name": "Konqueror", "icon": "konqueror", "command": "konqueror" }
+        ]
+    },
+    {
+        "_comment": "Trash item. Opens the trash, can show empty/full state, and can accept dropped files.",
+        "type": "trash",
+        "name": "Trash",
+        "icon": "user-trash",
+        "fullIcon": "user-trash-full",
+        "showState": true,
+        "acceptDrops": true
+    },
+    {
+        "_comment": "Welcome note. Demonstrates the editable note item and can be removed by the user.",
+        "type": "note",
+        "name": "Welcome note",
+        "icon": "knotes",
+        "note": "Thank you for choosing Oger Dock.\n\nPlease consider sharing feedback on GitHub or the Oger Dock community on Reddit; your feedback helps improve the project.\n\n(This is a welcome note: you can edit it, delete it, or move it whenever you like.)",
+        "popupWidth": 380,
+        "popupHeight": 260
+    },
+    {
+        "_comment": "Visual separator. Useful before date or time widgets.",
+        "type": "separator"
+    },
+    {
+        "_comment": "Calendar item. Shows date information as a tile or as text.",
+        "type": "calendar",
+        "name": "Calendar",
+        "icon": "x-office-calendar",
+        "popupScale": 1.0,
+        "calendarDisplayMode": "tile",
+        "textShowWeekday": true,
+        "textShowDay": true,
+        "textShowMonth": true,
+        "showWeekday": true,
+        "showWeekNumbers": true,
+        "hoverInteraction": false
+    },
+    {
+        "_comment": "Persistent marker that selects where open applications are rendered without storing dynamic tasks.",
+        "type": "dynamic-applications",
+        "name": "Open applications"
+    }
+]
+
+function cloneItems() {
+    return JSON.parse(JSON.stringify(items))
+}

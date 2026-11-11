@@ -1,0 +1,487 @@
+import QtQuick
+import "../config/code/configItems.js" as ConfigItemsJS
+
+QtObject {
+    id: root
+
+    property var systemDiscovery: null
+    property var taskController: null
+    property var dockItemsController: null
+    property var trayBridge: null
+    property var configureDockHandler: null
+    property var moveDynamicApplicationsHandler: null
+    property bool showConfigureDockAction: true
+    property bool recentContainerActive: false
+    property var disableRecentApplicationsHandler: null
+    property var setRecentContainerViewHandler: null
+
+    function removablePinnedItem(item) {
+        if (!item) {
+            return false
+        }
+        const type = String(item.type || "app")
+        return type === "app" || type === "folder" || type === "media"
+            || type === "punchimenu" || type === "note"
+    }
+
+    function applicationIdentityForItem(item) {
+        if (!item) {
+            return ""
+        }
+        if (String(item.storageId || "").trim().length > 0) {
+            return String(item.storageId)
+        }
+        if (String(item.appId || "").trim().length > 0) {
+            return String(item.appId)
+        }
+        return root.systemDiscovery
+            ? String(root.systemDiscovery.applicationIdForCommand(item.command || "") || "")
+            : ""
+    }
+
+    function appendUniqueActions(target, source, seenNames) {
+        const candidates = source instanceof Array ? source : []
+        for (let index = 0; index < candidates.length; index++) {
+            const action = candidates[index]
+            const name = String(action && action.name ? action.name : "").trim()
+            const key = name.toLocaleLowerCase()
+            if (name.length === 0 || seenNames[key]) {
+                continue
+            }
+            seenNames[key] = true
+            target.push(action)
+        }
+    }
+
+    function controlCenterActions(item, persistentIndex) {
+        const mode = ConfigItemsJS.normalizedControlCenterMode(item.controlCenterMode)
+        // Plasma injects translation functions into the applet context.
+        // qmllint disable unqualified
+        const floatingName = i18nc("@option:control-center-mode", "Floating")
+        const fullscreenName = i18nc("@option:control-center-mode", "Full screen")
+        const menuName = i18nc("@title:menu", "Menu mode")
+        // qmllint enable unqualified
+        const actions = [{
+            "name": menuName,
+            "detail": mode === "floating" ? floatingName : fullscreenName,
+            "icon": "view-grid",
+            "kind": "submenu",
+            "enabled": true,
+            "children": [
+                {
+                    "name": floatingName,
+                    "icon": "window-center",
+                    "kind": "setControlCenterMode",
+                    "enabled": true,
+                    "checked": mode === "floating",
+                    "mode": "floating",
+                    "targetIndex": persistentIndex
+                },
+                {
+                    "name": fullscreenName,
+                    "icon": "view-fullscreen",
+                    "kind": "setControlCenterMode",
+                    "enabled": true,
+                    "checked": mode === "fullScreen",
+                    "mode": "fullScreen",
+                    "targetIndex": persistentIndex
+                }
+            ]
+        }]
+        if (root.showConfigureDockAction && typeof root.configureDockHandler === "function") {
+            actions.push({
+                "name": i18nc("@action:context", "Configure Oger Dock…"), // qmllint disable unqualified
+                "icon": "preferences-system",
+                "kind": "configureDock",
+                "enabled": true
+            })
+        }
+        return actions
+    }
+
+    function actionsForItem(item, taskRows, itemOrigin, persistentIndex) {
+        if (!item || !root.taskController) {
+            return []
+        }
+
+        const itemType = String(item.type || "app")
+        const recentContainer = itemType === "folder"
+            && itemOrigin === "recent-container" && item.entryRole === "recent-container"
+        if (recentContainer && !root.recentContainerActive) {
+            return []
+        }
+        if (itemType === "control-center" && itemOrigin === "pinned") {
+            return root.controlCenterActions(item, persistentIndex)
+        }
+        const actions = []
+        const seenNames = {}
+        if (itemType === "app" && itemOrigin === "folder") {
+            root.appendUniqueActions(actions, [{
+                // Plasma injects translation functions into the applet context.
+                // qmllint disable unqualified
+                "name": i18nc("@action:context", "Open"),
+                // qmllint enable unqualified
+                "icon": String(item.icon || "application-x-executable"),
+                "kind": "launchDockItem",
+                "enabled": true,
+                "targetItem": item
+            }], seenNames)
+        } else if (itemType === "app" && (itemOrigin === "dynamic" || itemOrigin === "recent")) {
+            if (itemOrigin === "dynamic" && item.temporaryTrayId
+                    && root.taskController.isTrayTemporarilyPromoted(item.temporaryTrayId)) {
+                root.appendUniqueActions(actions, [{
+                    "name": i18nc("@action:context", "Return to system tray"), // qmllint disable unqualified
+                    "icon": "window-minimize",
+                    "kind": "returnToTray", "enabled": true,
+                    "desktopId": item.temporaryTrayId
+                }], seenNames)
+            }
+            if (itemOrigin === "dynamic" && typeof root.moveDynamicApplicationsHandler === "function") {
+                root.appendUniqueActions(actions, [{
+                    // Plasma injects translation functions into the applet context.
+                    // qmllint disable unqualified
+                    "name": i18nc("@action:context", "Move open applications section"),
+                    // qmllint enable unqualified
+                    "icon": "transform-move",
+                    "kind": "moveDynamicApplications",
+                    "enabled": true
+                }], seenNames)
+            }
+            const pinDescriptor = root.taskController.pinDescriptorForEntry(item)
+            if (pinDescriptor && !root.taskController.dockContainsPinDescriptor(pinDescriptor)) {
+                root.appendUniqueActions(actions, [{
+                    // Plasma injects translation functions into the applet context.
+                    // qmllint disable unqualified
+                    "name": i18nc("@action:context", "Pin to Dock"),
+                    // qmllint enable unqualified
+                    "icon": "window-pin",
+                    "kind": "pinToDock",
+                    "enabled": true,
+                    "pinDescriptor": pinDescriptor
+                }], seenNames)
+            }
+        } else if (recentContainer
+                || (itemOrigin === "pinned" && root.removablePinnedItem(item))) {
+            const itemActions = []
+            if (root.showConfigureDockAction && typeof root.configureDockHandler === "function") {
+                itemActions.push({
+                    // qmllint disable unqualified
+                    "name": i18nc("@action:context", "Configure Oger Dock…"),
+                    // qmllint enable unqualified
+                    "icon": "preferences-system",
+                    "kind": "configureDock",
+                    "enabled": true
+                })
+            }
+            if (itemType === "punchimenu") {
+                // Keep legacy fullscreen/centered internals for existing
+                // configurations, but expose only Normal and Compact.
+                const isCompact = String(item.menuMode || "normal") === "compact"
+                itemActions.push({
+                    "name": i18nc("@title:menu", "Menu mode"),
+                    "detail": isCompact
+                        ? i18nc("@option:punchimenu-mode", "Compact")
+                        : i18nc("@option:punchimenu-mode", "Normal"),
+                    "icon": "view-grid", "kind": "submenu", "enabled": true,
+                    "children": [{
+                        "name": i18nc("@option:punchimenu-mode", "Normal"),
+                        "icon": "view-list-icons", "kind": "setPunchiMenuMode",
+                        "enabled": true, "checked": !isCompact,
+                        "mode": "normal", "placementMode": "anchored",
+                        "targetIndex": persistentIndex
+                    }, {
+                        "name": i18nc("@option:punchimenu-mode", "Compact"),
+                        "icon": "view-list-tree", "kind": "setPunchiMenuMode",
+                        "enabled": true, "checked": isCompact,
+                        "mode": "compact", "placementMode": "anchored",
+                        "targetIndex": persistentIndex
+                    }]
+                })
+            }
+            if (itemType === "folder") {
+                const currentFolderView = item.layout === "list"
+                        || item.layout === "detailed"
+                        || item.layout === "fan"
+                    ? item.layout : "grid"
+                const activeFolderViewDetail = currentFolderView === "list"
+                    // qmllint disable unqualified
+                    ? i18nc("@item:inlistbox Folder popup layout", "List")
+                    : currentFolderView === "detailed"
+                        ? i18nc("@item:inlistbox Folder popup layout", "Detailed")
+                        : currentFolderView === "fan"
+                            ? i18nc("@item:inlistbox Folder popup layout", "Fan")
+                            : i18nc("@item:inlistbox Folder popup layout", "Grid")
+                    // qmllint enable unqualified
+                const expectedFolderText = typeof root.dockItemsController.canonicalJsonText
+                        === "function"
+                    ? root.dockItemsController.canonicalJsonText(item) : ""
+                const folderViewAction = {
+                    // qmllint disable unqualified
+                    "name": i18nc("@title:menu", "Folder view"),
+                    "detail": activeFolderViewDetail,
+                    // qmllint enable unqualified
+                    "icon": "view-grid",
+                    "kind": "submenu",
+                    "enabled": true,
+                    "children": [
+                        {
+                            // qmllint disable unqualified
+                            "name": i18nc("@item:inlistbox Folder popup layout", "Grid"),
+                            // qmllint enable unqualified
+                            "icon": "view-grid",
+                            "kind": "setFolderView",
+                            "enabled": true,
+                            "checked": currentFolderView === "grid",
+                            "layout": "grid",
+                            "targetIndex": persistentIndex,
+                            "expectedFolderText": expectedFolderText
+                        },
+                        {
+                            // qmllint disable unqualified
+                            "name": i18nc("@item:inlistbox Folder popup layout", "List"),
+                            // qmllint enable unqualified
+                            "icon": "view-list-icons",
+                            "kind": "setFolderView",
+                            "enabled": true,
+                            "checked": currentFolderView === "list",
+                            "layout": "list",
+                            "targetIndex": persistentIndex,
+                            "expectedFolderText": expectedFolderText
+                        },
+                        {
+                            // qmllint disable unqualified
+                            "name": i18nc("@item:inlistbox Folder popup layout", "Detailed"),
+                            // qmllint enable unqualified
+                            "icon": "view-list-details",
+                            "kind": "setFolderView",
+                            "enabled": true,
+                            "checked": currentFolderView === "detailed",
+                            "layout": "detailed",
+                            "targetIndex": persistentIndex,
+                            "expectedFolderText": expectedFolderText
+                        },
+                        {
+                            // qmllint disable unqualified
+                            "name": i18nc("@item:inlistbox Folder popup layout", "Fan"),
+                            // qmllint enable unqualified
+                            "icon": "view-list-icons",
+                            "kind": "setFolderView",
+                            "enabled": true,
+                            "checked": currentFolderView === "fan",
+                            "layout": "fan",
+                            "targetIndex": persistentIndex,
+                            "expectedFolderText": expectedFolderText
+                        }
+                    ]
+                }
+                if (recentContainer) {
+                    folderViewAction.name = i18nc("@title:menu", "Container view") // qmllint disable unqualified
+                    for (let index = 0; index < folderViewAction.children.length; index++) {
+                        const child = folderViewAction.children[index]
+                        child.kind = "setRecentContainerView"
+                        child.enabled = typeof root.setRecentContainerViewHandler === "function"
+                        delete child.targetIndex
+                        delete child.expectedFolderText
+                    }
+                }
+                itemActions.push(folderViewAction)
+            }
+            if (recentContainer) {
+                itemActions.push({
+                    "name": i18nc("@action:context", "Disable recent applications"), // qmllint disable unqualified
+                    "icon": "view-hidden",
+                    "kind": "disableRecentApplications",
+                    "enabled": typeof root.disableRecentApplicationsHandler === "function"
+                })
+            } else if (itemType !== "punchimenu") {
+                itemActions.push({
+                    // qmllint disable unqualified
+                    "name": i18nc("@action:context", "Unpin from Dock"),
+                    // qmllint enable unqualified
+                    "icon": "window-pin",
+                    "kind": "unpinFromDock",
+                    "enabled": true,
+                    "targetIndex": persistentIndex,
+                    "targetApplicationId": itemType === "app"
+                        ? root.taskController.dockItemApplicationId(item)
+                        : "",
+                    "targetLauncherUrl": itemType === "app"
+                        ? root.taskController.dockItemLauncherUrl(item)
+                        : ""
+                })
+            }
+            root.appendUniqueActions(actions, itemActions, seenNames)
+        }
+
+        if (itemType !== "app") {
+            return actions
+        }
+
+        const applicationId = root.applicationIdentityForItem(item)
+        if (applicationId.length > 0 && root.systemDiscovery) {
+            root.appendUniqueActions(actions,
+                root.systemDiscovery.applicationActions(applicationId), seenNames)
+        }
+
+        if (item.actionsEnabled !== false && item.actions instanceof Array) {
+            const customActions = item.actions.filter(function(action) {
+                return action && String(action.command || "").trim().length > 0
+            }).map(function(action) {
+                return Object.assign({}, action, {
+                    "kind": "customCommand",
+                    "enabled": true,
+                    "detail": String(action.command || "")
+                })
+            })
+            root.appendUniqueActions(actions, customActions, seenNames)
+        }
+
+        // Expose the application's native tray menu, which may contain Quit.
+        // Never synthesize a SIGTERM action: it can terminate unrelated processes.
+        if (itemType === "app" && root.trayBridge) {
+            const desktopId = root.applicationIdentityForItem(item)
+            if (root.trayBridge.containsDesktopEntry(desktopId)) {
+                root.appendUniqueActions(actions, [{
+                    "name": i18nc("@action:context", "Native application menu…"),
+                    "icon": "application-menu",
+                    "kind": "openTrayAppMenu",
+                    "enabled": true,
+                    "desktopId": desktopId
+                }], seenNames)
+            }
+        }
+        root.appendUniqueActions(actions,
+            root.taskController.contextActionsForRows(taskRows || []), seenNames)
+        if (root.showConfigureDockAction && typeof root.configureDockHandler === "function") {
+            root.appendUniqueActions(actions, [{
+                // qmllint disable unqualified
+                "name": i18nc("@action:context", "Configure Oger Dock…"),
+                // qmllint enable unqualified
+                "icon": "preferences-system",
+                "kind": "configureDock",
+                "enabled": true
+            }], seenNames)
+        }
+        return actions
+    }
+
+    function itemHasContextMenu(item, taskRows, itemOrigin) {
+        if (!item || !root.taskController) {
+            return false
+        }
+        const itemType = String(item.type || "app")
+        if (itemOrigin === "recent-container" && itemType === "folder"
+                && item.entryRole === "recent-container") {
+            return root.recentContainerActive
+                && (typeof root.disableRecentApplicationsHandler === "function"
+                    || typeof root.setRecentContainerViewHandler === "function")
+        }
+        if (itemType !== "app") {
+            return (itemOrigin === "pinned"
+                    && (root.removablePinnedItem(item) || itemType === "control-center"))
+                || (root.showConfigureDockAction && typeof root.configureDockHandler === "function")
+        }
+        return itemOrigin === "pinned"
+            || (itemOrigin === "dynamic"
+                && (typeof root.moveDynamicApplicationsHandler === "function"
+                    || !!root.taskController.pinDescriptorForEntry(item)))
+            || String(item.storageId || item.appId || item.command || "").trim().length > 0
+            || (item.actions instanceof Array && item.actions.length > 0)
+            || (taskRows instanceof Array && taskRows.length > 0)
+            || (root.showConfigureDockAction && typeof root.configureDockHandler === "function")
+    }
+
+    function triggerAction(action) {
+        if (!action || action.enabled === false || !root.dockItemsController) {
+            return false
+        }
+        if (action.kind === "returnToTray") {
+            return root.taskController
+                ? root.taskController.returnTemporaryTrayAppToTray(action.desktopId)
+                : false
+        }
+        if (action.kind === "openTrayAppMenu") {
+            // Popup placement is handled by the owning applet, not this model.
+            return false
+        }
+        if (action.kind === "disableRecentApplications") {
+            return root.recentContainerActive
+                && typeof root.disableRecentApplicationsHandler === "function"
+                ? root.disableRecentApplicationsHandler() : false
+        }
+        if (action.kind === "setRecentContainerView") {
+            return root.recentContainerActive
+                && ["grid", "list", "detailed", "fan"].indexOf(action.layout) >= 0
+                && typeof root.setRecentContainerViewHandler === "function"
+                ? root.setRecentContainerViewHandler(action.layout) : false
+        }
+        if (action.kind === "launchDockItem") {
+            root.dockItemsController.launchDockItem(action.targetItem)
+            return true
+        }
+        if (action.kind === "pinToDock") {
+            return root.dockItemsController.pinTaskToDock(action.pinDescriptor)
+        }
+        if (action.kind === "unpinFromDock") {
+            return root.dockItemsController.unpinItemFromDock(action.targetIndex,
+                action.targetApplicationId, action.targetLauncherUrl)
+        }
+        if (action.kind === "configureDock") {
+            return root.configureDockHandler
+                ? root.configureDockHandler()
+                : false
+        }
+        if (action.kind === "moveDynamicApplications") {
+            return root.moveDynamicApplicationsHandler
+                ? root.moveDynamicApplicationsHandler()
+                : false
+        }
+        if (action.kind === "setPunchiMenuMode") {
+            const targetIndex = Number(action.targetIndex)
+            const targetItem = Number.isInteger(targetIndex)
+                    && targetIndex >= 0
+                    && targetIndex < root.dockItemsController.dockItems.length
+                ? root.dockItemsController.dockItems[targetIndex]
+                : null
+            if (!targetItem || String(targetItem.type || "") !== "punchimenu") {
+                return false
+            }
+            if (action.placementMode) {
+                root.dockItemsController.setPunchiMenuValue(
+                    "normalPlacementMode", String(action.placementMode))
+            }
+            return root.dockItemsController.setPunchiMenuValue(
+                "menuMode", String(action.mode || "normal"))
+        }
+        if (action.kind === "setControlCenterMode") {
+            const targetIndex = Number(action.targetIndex)
+            const items = root.dockItemsController.dockItems
+            const targetItem = Number.isInteger(targetIndex) && targetIndex >= 0
+                    && targetIndex < items.length ? items[targetIndex] : null
+            if (!targetItem || targetItem.type !== "control-center"
+                    || (action.mode !== "floating" && action.mode !== "fullScreen")) {
+                return false
+            }
+            return root.dockItemsController.setControlCenterMode(action.mode)
+        }
+        if (action.kind === "setFolderView") {
+            return root.dockItemsController.setFolderLayout(
+                action.targetIndex, String(action.layout || ""),
+                String(action.expectedFolderText || ""))
+        }
+        if (action.kind === "desktopAction") {
+            return root.systemDiscovery
+                ? root.systemDiscovery.launchApplicationAction(
+                    action.applicationId || "", action.actionId || "")
+                : false
+        }
+        if (action.kind === "taskAction" && root.taskController) {
+            return root.taskController.triggerContextAction(action)
+        }
+        if (String(action.command || "").trim().length > 0) {
+            root.dockItemsController.runCommand(action.command)
+            return true
+        }
+        return false
+    }
+}

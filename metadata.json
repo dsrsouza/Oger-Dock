@@ -1,0 +1,32 @@
+{
+    "KPackageStructure": "Plasma/Applet",
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "Diego Souza.R",
+                "Email": ""
+            },
+            {
+                "Name": "Punchisoft",
+                "Email": ""
+            }
+        ],
+        "BugReportUrl": "https://github.com/dsrsouza/Oger-Dock/discussions",
+        "Category": "Application Launchers",
+        "Description": "Oger Dock is a customizable launcher dock for KDE Plasma 6 with a modular and clean architecture.",
+        "Description[de]": "Oger Dock ist ein anpassbares Starter-Dock für KDE Plasma 6 mit modularer und klarer Architektur.",
+        "Description[es]": "Oger Dock es un dock personalizable de lanzadores para KDE Plasma 6 con una arquitectura modular y limpia.",
+        "Description[pt_BR]": "Oger Dock é uma dock de lançadores personalizável para KDE Plasma 6 com uma arquitetura modular e limpa.",
+        "Icon": "/images/oger-dock-widget.png",
+        "Id": "org.kde.plasma.punchi-dock-remastered",
+        "License": "GPL-3.0-or-later",
+        "Name": "Oger Dock",
+        "Name[es]": "Oger Dock",
+        "ServiceTypes": [
+            "Plasma/Applet"
+        ],
+        "Version": "1.0.0",
+        "Website": "https://github.com/dsrsouza/Oger-Dock"
+    },
+    "X-Plasma-API-Minimum-Version": "6.0"
+}

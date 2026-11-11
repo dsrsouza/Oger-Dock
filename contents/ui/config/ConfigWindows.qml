@@ -1,0 +1,212 @@
+import QtQuick
+import QtQuick.Controls as Controls
+import QtQuick.Layouts
+import org.kde.kcmutils as KCM
+import org.kde.kirigami as Kirigami
+import org.kde.plasma.core as PlasmaCore
+import org.kde.plasma.plasmoid
+import "components"
+
+KCM.SimpleKCM {
+    id: page
+
+    // R62.6: immediate category switch; do not animate the entire KCM.
+    // Whole-page transforms cannot shorten control creation and cost frames.
+
+    // R58.1: only this applet's configuration pages request maximized mode.
+    // The KDE-owned window still handles its own close/minimize/Save dialog.
+    ConfigMaximizedWindowGuard {
+        hostWindow: page.Window.window
+        diagnosticCategory: "Janelas"
+    }
+    implicitWidth: layoutMetrics.pageImplicitWidth
+
+    ConfigLayoutMetrics {
+        id: layoutMetrics
+        availableWidth: page.width
+    }
+
+    property alias cfg_showActiveTasks: showActiveTasksCheck.checked
+    property alias cfg_showTasksCurrentDesktopOnly: currentDesktopOnlyCheck.checked
+    property string cfg_windowGroupingMode: "application"
+    property alias cfg_maxDynamicTaskGroups: maxDynamicTaskGroupsSpin.value
+    readonly property bool inPanel: Plasmoid.formFactor === PlasmaCore.Types.Horizontal || Plasmoid.formFactor === PlasmaCore.Types.Vertical
+    readonly property bool verticalPanel: Plasmoid.formFactor === PlasmaCore.Types.Vertical
+    readonly property int contentWidthHint: layoutMetrics.contentWidth
+    readonly property int selectorWidthHint: layoutMetrics.selectorWidth
+    readonly property var groupingModeOptions: [
+        { "text": i18n("Group by application"), "value": "application" }, // qmllint disable unqualified
+        { "text": i18n("Show each window"), "value": "window" } // qmllint disable unqualified
+    ]
+
+    component SectionTitle: Kirigami.Heading {
+        Layout.fillWidth: true
+        level: 3
+        leftPadding: 0
+    }
+
+    function syncComboValue(combo, value) {
+        if (!combo) {
+            return
+        }
+
+        const resolvedIndex = Math.max(0, combo.indexOfValue(value))
+        if (combo.currentIndex !== resolvedIndex) {
+            combo.currentIndex = resolvedIndex
+        }
+    }
+
+    function syncSelectors() {
+        syncComboValue(groupingModeCombo, page.cfg_windowGroupingMode)
+    }
+
+    onCfg_windowGroupingModeChanged: syncSelectors()
+    Component.onCompleted: syncSelectors()
+
+    Kirigami.FormLayout {
+        SectionTitle {
+            Kirigami.FormData.isSection: true
+            text: i18n("Task visibility") // qmllint disable unqualified
+        }
+
+        // qmllint disable unqualified
+        Controls.CheckBox {
+            id: showActiveTasksCheck
+            Kirigami.FormData.label: i18n("Tasks:")
+            text: i18n("Show active windows in the dock")
+
+        }
+
+        Controls.Label {
+            text: i18n("Pinned launchers can act as task entries when their application is already open.")
+            wrapMode: Text.WordWrap
+            Layout.fillWidth: true
+            Layout.maximumWidth: page.contentWidthHint
+            leftPadding: layoutMetrics.helperIndent
+            color: Kirigami.Theme.disabledTextColor
+            enabled: showActiveTasksCheck.checked
+        }
+
+        Controls.SpinBox {
+            id: maxDynamicTaskGroupsSpin
+            Kirigami.FormData.label: i18n("Dynamic groups:")
+            from: 1
+            to: 20
+            enabled: showActiveTasksCheck.checked
+            Layout.preferredWidth: page.selectorWidthHint
+            Accessible.name: i18n("Maximum dynamic groups shown in the dock")
+
+        }
+
+        Controls.Label {
+            text: i18n("Limits the number of dynamic task groups shown directly in the dock. Additional groups that exceed this limit or available space remain accessible from the overflow item.")
+            wrapMode: Text.WordWrap
+            Layout.fillWidth: true
+            Layout.maximumWidth: page.contentWidthHint
+            leftPadding: layoutMetrics.helperIndent
+            color: Kirigami.Theme.disabledTextColor
+            enabled: showActiveTasksCheck.checked
+        }
+
+        Controls.CheckBox {
+            id: currentDesktopOnlyCheck
+            Kirigami.FormData.label: i18n("Scope:")
+            text: i18n("Show only windows from the current virtual desktop")
+            enabled: showActiveTasksCheck.checked
+
+        }
+
+        Controls.Label {
+            text: currentDesktopOnlyCheck.checked
+                ? i18n("Only tasks on the current desktop will appear.")
+                : i18n("Tasks from all virtual desktops can appear.")
+            wrapMode: Text.WordWrap
+            Layout.fillWidth: true
+            Layout.maximumWidth: page.contentWidthHint
+            leftPadding: layoutMetrics.helperIndent
+            color: Kirigami.Theme.disabledTextColor
+            enabled: showActiveTasksCheck.checked
+        }
+        // qmllint enable unqualified
+
+        Kirigami.Separator {
+            Kirigami.FormData.isSection: true
+        }
+        SectionTitle {
+            Kirigami.FormData.isSection: true
+            text: i18n("Grouping and limits") // qmllint disable unqualified
+        }
+
+        RowLayout {
+            Kirigami.FormData.label: i18n("Window behavior:") // qmllint disable unqualified
+            enabled: showActiveTasksCheck.checked
+            Layout.maximumWidth: page.contentWidthHint
+
+            Controls.ComboBox {
+                id: groupingModeCombo
+                Layout.preferredWidth: page.selectorWidthHint
+                Layout.maximumWidth: page.selectorWidthHint
+                textRole: "text"
+                valueRole: "value"
+                model: page.groupingModeOptions
+                onActivated: {
+                    if (page.cfg_windowGroupingMode !== currentValue) {
+                        page.cfg_windowGroupingMode = currentValue
+                    }
+                }
+
+            }
+        }
+
+        Controls.Label {
+            text: page.cfg_windowGroupingMode === "application"
+                ? i18n("Dynamic task entries share one dock item per application, while pinned launchers keep their current grouped behavior.") // qmllint disable unqualified
+                : i18n("Each dynamic window gets its own dock item, while pinned launchers still accumulate their matching windows by application.") // qmllint disable unqualified
+            wrapMode: Text.WordWrap
+            Layout.fillWidth: true
+            Layout.maximumWidth: page.contentWidthHint
+            leftPadding: layoutMetrics.helperIndent
+            color: Kirigami.Theme.disabledTextColor
+            enabled: showActiveTasksCheck.checked
+        }
+
+        Kirigami.Separator {
+            Kirigami.FormData.isSection: true
+        }
+        SectionTitle {
+            Kirigami.FormData.isSection: true
+            text: i18n("Oger Dock and System Tray") // qmllint disable unqualified
+        }
+        Controls.Label {
+            text: i18n("Applications started manually are represented in the dock when detected. Applications started automatically at login are not added as dynamic dock entries. Native SNI menus remain active.") // qmllint disable unqualified
+            wrapMode: Text.WordWrap
+            Layout.fillWidth: true
+            Layout.maximumWidth: page.contentWidthHint
+            leftPadding: layoutMetrics.helperIndent
+        }
+        Controls.Label {
+            text: i18n("To hide a duplicate icon from the visible KDE tray: right-click the system tray, choose Configure System Tray, open Entries, and select Always Hidden for the app. It will remain accessible from the expanded tray.") // qmllint disable unqualified
+            wrapMode: Text.WordWrap
+            Layout.fillWidth: true
+            Layout.maximumWidth: page.contentWidthHint
+            leftPadding: layoutMetrics.helperIndent
+        }
+        Controls.Label {
+            text: i18n("KDE stores tray visibility per application. Keep auto-start application entries visible if you need them at login. Oger Dock does not change Plasma panel settings automatically.") // qmllint disable unqualified
+            wrapMode: Text.WordWrap
+            Layout.fillWidth: true
+            Layout.maximumWidth: page.contentWidthHint
+            leftPadding: layoutMetrics.helperIndent
+            color: Kirigami.Theme.disabledTextColor
+        }
+        Controls.Label {
+            text: i18n("Third-party tray applications with a recognized window can temporarily appear in Oger Dock when activated. Right-click the temporary dock icon to return it to the system tray. Popup windows managed only by the application may not be detected.") // qmllint disable unqualified
+            wrapMode: Text.WordWrap
+            Layout.fillWidth: true
+            Layout.maximumWidth: page.contentWidthHint
+            leftPadding: layoutMetrics.helperIndent
+            color: Kirigami.Theme.disabledTextColor
+        }
+
+    }
+}
