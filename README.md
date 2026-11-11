@@ -54,57 +54,57 @@ Tray behavior depends on the application's exported SNI and the windows recogniz
 
 ## Gallery
 
-### Feature posters
+### Feature demonstrations
 
-> **Promotional demonstrations:** the images below illustrate Oger Dock's features using reconstructed desktop elements to protect personal data. They are not unedited screenshots.
+**Promotional composites:** these posters are based on captures of Oger Dock in use. Personal folders, filenames, and other details have been replaced with generic examples. The artistic backgrounds and framing are not an installable dock theme.
 
-### 1. APPLICATION MENU
+### 1. Application menu
 
-<p align="center"><img src="Images/posters/ogermenu.svg" width="100%" alt="APPLICATION MENU — Oger Dock"></p>
+<p align="center"><img src="Images/features/01-ogermenu.webp" width="100%" alt="Oger Dock — Application menu: demonstração do recurso"></p>
 
-Search installed apps, browse categories and access KDE session actions.
+Search installed applications, browse categories, and access KDE session actions.
 
-### 2. FAN FOLDERS
+### 2. Fan folders
 
-<p align="center"><img src="Images/posters/fan-folders.svg" width="100%" alt="FAN FOLDERS — Oger Dock"></p>
+<p align="center"><img src="Images/features/02-pastas-leque.webp" width="100%" alt="Oger Dock — Fan folders: demonstração do recurso"></p>
 
-Create themed collections with animated fan-style access to your shortcuts.
+Group applications into collections and open them in an animated fan.
 
-### 3. DOLPHIN INTEGRATION
+### 3. Dolphin integration
 
-<p align="center"><img src="Images/posters/dolphin.svg" width="100%" alt="DOLPHIN INTEGRATION — Oger Dock"></p>
+<p align="center"><img src="Images/features/03-dolphin.webp" width="100%" alt="Oger Dock — Dolphin integration: demonstração do recurso"></p>
 
-Launch directories directly through KDE's Dolphin file manager.
+Open folders directly in the KDE Plasma file manager.
 
-### 4. NATIVE TRAY MENUS
+### 4. Native tray menus
 
-<p align="center"><img src="Images/posters/native-tray-menu.svg" width="100%" alt="NATIVE TRAY MENUS — Oger Dock"></p>
+<p align="center"><img src="Images/features/04-bandeja.webp" width="100%" alt="Oger Dock — Native tray menus: demonstração do recurso"></p>
 
-Access native SNI/DBusMenu options exposed by compatible applications.
+Access native SNI and DBusMenu actions exposed by compatible applications.
 
-### 5. TRASH POPUP
+### 5. Trash popup
 
-<p align="center"><img src="Images/posters/trash-popup.svg" width="100%" alt="TRASH POPUP — Oger Dock"></p>
+<p align="center"><img src="Images/features/05-lixeira.webp" width="100%" alt="Oger Dock — Trash popup: demonstração do recurso"></p>
 
-Inspect deleted items and empty the trash or open it in Dolphin.
+Inspect deleted items, empty the trash with confirmation, and open it in Dolphin.
 
-### 6. MPRIS MINI PLAYER
+### 6. MPRIS mini player
 
-<p align="center"><img src="Images/posters/mini-player.svg" width="100%" alt="MPRIS MINI PLAYER — Oger Dock"></p>
+<p align="center"><img src="Images/features/06-miniplayer.webp" width="100%" alt="Oger Dock — MPRIS mini player: demonstração do recurso"></p>
 
-Control compatible players and see cover art and track details.
+Control media playback with artwork and compact controls inside the dock.
 
-### 7. DOCK CONTEXT MENU
+### 7. Dock context menu
 
-<p align="center"><img src="Images/posters/context-menu.svg" width="100%" alt="DOCK CONTEXT MENU — Oger Dock"></p>
+<p align="center"><img src="Images/features/07-contexto.webp" width="100%" alt="Oger Dock — Dock context menu: demonstração do recurso"></p>
 
-Unlock and customize the dock, add separators and open settings.
+Unlock the dock, add separators, and open its configuration.
 
-### 8. SETTINGS PANEL
+### 8. Settings panel
 
-<p align="center"><img src="Images/posters/settings.svg" width="100%" alt="SETTINGS PANEL — Oger Dock"></p>
+<p align="center"><img src="Images/features/08-configuracoes.webp" width="100%" alt="Oger Dock — Settings panel: demonstração do recurso"></p>
 
-Manage launchers, folders, appearance, menus, media, windows and shortcuts.
+Rearrange icons, folders, and launchers, and customize dock behavior.
 
 ## Installation
 

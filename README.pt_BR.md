@@ -54,57 +54,57 @@ A integração depende das informações efetivamente fornecidas pelo aplicativo
 
 ## Galeria
 
-### Recursos em destaque
+### Demonstração dos recursos
 
-> **Pôsteres de demonstração:** as artes abaixo representam visualmente os recursos do Oger Dock e utilizam elementos de interface reconstruídos para proteger dados pessoais. Não são capturas de tela inalteradas.
+**Imagens de apresentação:** pôsteres baseados em capturas do Oger Dock em funcionamento. Pastas, nomes de arquivos e outros detalhes pessoais foram substituídos por exemplos genéricos. Os cenários e molduras artísticos não são um tema instalável da dock.
 
 ### 1. OgerMenu
 
-<p align="center"><img src="Images/posters/ogermenu.svg" width="100%" alt="OgerMenu — Oger Dock"></p>
+<p align="center"><img src="Images/features/01-ogermenu.webp" width="100%" alt="Oger Dock — OgerMenu: demonstração do recurso"></p>
 
-Menu principal com pesquisa, categorias, grade de aplicativos e ações de sessão.
+Pesquisa de aplicativos, navegação por categorias e ações de sessão do KDE.
 
 ### 2. Pastas em leque
 
-<p align="center"><img src="Images/posters/fan-folders.svg" width="100%" alt="Pastas em leque — Oger Dock"></p>
+<p align="center"><img src="Images/features/02-pastas-leque.webp" width="100%" alt="Oger Dock — Pastas em leque: demonstração do recurso"></p>
 
-Agrupe aplicativos em coleções que se abrem em leque animado.
+Agrupe aplicativos em coleções e acesse-os por um leque animado.
 
 ### 3. Integração com Dolphin
 
-<p align="center"><img src="Images/posters/dolphin.svg" width="100%" alt="Integração com Dolphin — Oger Dock"></p>
+<p align="center"><img src="Images/features/03-dolphin.webp" width="100%" alt="Oger Dock — Integração com Dolphin: demonstração do recurso"></p>
 
-Abra pastas e diretórios diretamente no gerenciador de arquivos do KDE.
+Abra pastas diretamente no gerenciador de arquivos do KDE Plasma.
 
 ### 4. Menus nativos da bandeja
 
-<p align="center"><img src="Images/posters/native-tray-menu.svg" width="100%" alt="Menus nativos da bandeja — Oger Dock"></p>
+<p align="center"><img src="Images/features/04-bandeja.webp" width="100%" alt="Oger Dock — Menus nativos da bandeja: demonstração do recurso"></p>
 
-Acesse o menu SNI/DBusMenu oferecido por aplicativos compatíveis.
+Acesse ações reais de aplicativos compatíveis com SNI e DBusMenu.
 
-### 5. Lixeira integrada
+### 5. Popup da lixeira
 
-<p align="center"><img src="Images/posters/trash-popup.svg" width="100%" alt="Lixeira integrada — Oger Dock"></p>
+<p align="center"><img src="Images/features/05-lixeira.webp" width="100%" alt="Oger Dock — Popup da lixeira: demonstração do recurso"></p>
 
-Visualize arquivos na lixeira e use as ações Esvaziar e Abrir no Dolphin.
+Confira os itens descartados, esvazie com confirmação e abra a lixeira no Dolphin.
 
 ### 6. Mini player MPRIS
 
-<p align="center"><img src="Images/posters/mini-player.svg" width="100%" alt="Mini player MPRIS — Oger Dock"></p>
+<p align="center"><img src="Images/features/06-miniplayer.webp" width="100%" alt="Oger Dock — Mini player MPRIS: demonstração do recurso"></p>
 
-Controle a reprodução e visualize capa, artista e música sem deslocar os ícones.
+Controle a reprodução com capa e botões de mídia integrados à dock.
 
 ### 7. Menu de contexto
 
-<p align="center"><img src="Images/posters/context-menu.svg" width="100%" alt="Menu de contexto — Oger Dock"></p>
+<p align="center"><img src="Images/features/07-contexto.webp" width="100%" alt="Oger Dock — Menu de contexto: demonstração do recurso"></p>
 
-Destrave a dock, adicione separadores, altere o tema e abra configurações.
+Destrave a dock, adicione separadores e acesse as configurações.
 
 ### 8. Painel de configurações
 
-<p align="center"><img src="Images/posters/settings.svg" width="100%" alt="Painel de configurações — Oger Dock"></p>
+<p align="center"><img src="Images/features/08-configuracoes.webp" width="100%" alt="Oger Dock — Painel de configurações: demonstração do recurso"></p>
 
-Personalize ícones, pastas, aparência, menus, áudio, janelas e atalhos.
+Reorganize ícones, pastas e lançadores e personalize o comportamento da dock.
 
 ## Instalação
 

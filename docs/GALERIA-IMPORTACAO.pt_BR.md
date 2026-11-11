@@ -1,22 +1,18 @@
-# Galeria visual do Oger Dock 1.0.0
+# Galeria oficial de demonstração — Oger Dock
 
-Os dois READMEs apresentam **oito pôsteres ilustrativos** em destaque, um para cada recurso. Eles são arquivos `SVG` versionados na pasta [`Images/posters/`](../Images/posters).
+Os READMEs em português e inglês exibem **oito pôsteres WebP (2048 × 1152 px)** em tamanho grande, diretamente na página.
 
-## Recursos ilustrados
+Os pôsteres são montagens de divulgação baseadas em capturas reais da dock. Elementos pessoais, nomes de pastas, arquivos e conteúdo da lixeira foram substituídos por exemplos genéricos. A arte de fundo inspirada no ogro e as molduras fazem parte do material promocional e não indicam um tema instalável.
 
-1. OgerMenu — pesquisa, categorias, aplicativos e controles de sessão.
-2. Pastas em leque — acesso a aplicativos agrupados.
-3. Dolphin — acesso a diretórios.
-4. Menus nativos SNI/DBusMenu — integração com aplicativos compatíveis.
-5. Lixeira — visualização de itens e comandos de gerenciamento.
-6. Mini player MPRIS — capa, música e controles de reprodução.
-7. Menu de contexto da dock — organização, personalização e configuração.
-8. Painel de configurações — itens, aparência, pastas, menus, áudio e atalhos.
+Arquivos publicados na pasta [`Images/features/`](../Images/features/):
 
-**Importante:** são pôsteres vetoriais de demonstração. Os elementos foram reconstruídos como ilustrações; eles não são capturas de tela inalteradas nem comprovam execução em outras distribuições.
+1. `01-ogermenu.webp`
+2. `02-pastas-leque.webp`
+3. `03-dolphin.webp`
+4. `04-bandeja.webp`
+5. `05-lixeira.webp`
+6. `06-miniplayer.webp`
+7. `07-contexto.webp`
+8. `08-configuracoes.webp`
 
-## Atualização futura
-
-Para trocar os pôsteres por capturas reais editadas para privacidade, publique os arquivos de imagem no repositório antes de atualizar as referências nos READMEs. Não publique nomes de arquivos pessoais, janelas privadas ou notificações.
-
-A antiga automação que dependia do envio de um ZIP para a galeria foi desativada porque os pôsteres já estão presentes no repositório. Não é necessário enviar nenhum ZIP para visualizar esta versão.
+As versões antigas em SVG foram removidas de `Images/posters/`. O código funcional do Oger Dock não foi alterado.
