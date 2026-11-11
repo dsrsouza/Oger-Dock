@@ -62,6 +62,85 @@ Real screenshots are reserved for this gallery for the bottom and side dock, the
 
 Download the ZIP or TAR.GZ from [Releases](https://github.com/dsrsouza/Oger-Dock/releases), extract the archive, and run the included installer **inside the extracted project folder**. A C++/Qt6/KF6 build takes place on your machine; this is **not** a universal binary package.
 
+### Build dependencies by distribution
+
+Native compilation needs **CMake 3.22+, a C++20 compiler, Qt 6.6+, KDE Frameworks 6, Plasma/PlasmaQuick 6, Plasma Activities/ActivitiesStats, LibKWorkspace, PipeWire 0.3 headers, ECM, Gettext and the Qt Shader Baker (`qsb`)**. These dependencies come from the actual Oger Dock 1.0.0 CMake files.
+
+Choose **one** command matching your distribution. Package names and versions can change between releases; these are source-build package lists, **not** a claim that the final release has been tested on every distribution.
+
+<details>
+<summary>openSUSE Tumbleweed / Leap with compatible Plasma 6</summary>
+
+```bash
+sudo zypper refresh
+sudo zypper install \
+  binutils cmake make gcc-c++ kf6-extra-cmake-modules gettext-tools git pkgconf-pkg-config \
+  qt6-base-devel qt6-declarative-devel qt6-shadertools \
+  kf6-kconfig-devel kf6-kcoreaddons-devel kf6-kglobalaccel-devel \
+  kf6-ki18n-devel kf6-kjobwidgets-devel kf6-kio-devel \
+  kf6-kpackage-devel kf6-kservice-devel kf6-kwindowsystem-devel \
+  libplasma6-devel plasma6-workspace-devel \
+  plasma6-activities-devel plasma6-activities-stats-devel \
+  pipewire-devel unzip zip
+```
+
+</details>
+
+<details>
+<summary>Fedora KDE</summary>
+
+```bash
+sudo dnf install \
+  binutils cmake make gcc-c++ extra-cmake-modules gettext git pkgconf-pkg-config \
+  qt6-qtbase-devel qt6-qtdeclarative-devel qt6-qtshadertools \
+  kf6-kconfig-devel kf6-kcoreaddons-devel kf6-kglobalaccel-devel \
+  kf6-ki18n-devel kf6-kjobwidgets-devel kf6-kio-devel \
+  kf6-kpackage-devel kf6-kservice-devel kf6-kwindowsystem-devel \
+  libplasma-devel plasma-workspace-devel \
+  plasma-activities-devel plasma-activities-stats-devel \
+  pipewire-devel unzip zip
+```
+
+</details>
+
+<details>
+<summary>Debian / Ubuntu / Kubuntu / KDE neon with Plasma 6</summary>
+
+```bash
+sudo apt update
+sudo apt install \
+  binutils build-essential cmake extra-cmake-modules gettext git pkg-config \
+  qt6-base-dev qt6-base-dev-tools qt6-declarative-dev \
+  qt6-declarative-dev-tools qt6-shader-baker \
+  libkf6config-dev libkf6coreaddons-dev libkf6globalaccel-dev \
+  libkf6i18n-dev libkf6jobwidgets-dev libkf6kio-dev \
+  libkf6package-dev libkf6service-dev libkf6windowsystem-dev \
+  libplasma-dev plasma-workspace-dev \
+  libplasmaactivities-dev libplasmaactivitiesstats-dev \
+  libpipewire-0.3-dev unzip zip
+```
+
+</details>
+
+<details>
+<summary>Arch Linux / Manjaro with compatible Plasma 6</summary>
+
+```bash
+sudo pacman -Syu --needed \
+  base-devel binutils cmake extra-cmake-modules gettext git pkgconf \
+  qt6-base qt6-declarative qt6-shadertools \
+  kconfig kcoreaddons kglobalaccel ki18n kjobwidgets kio \
+  kpackage kservice kwindowsystem \
+  libplasma plasma-workspace plasma-activities plasma-activities-stats \
+  pipewire unzip zip
+```
+
+</details>
+
+After installing the packages, run `bash scripts-user/setup.sh --check-deps` in the **complete extracted source directory**. **Important:** the current script checks only a **subset** of the CMake dependencies, especially on openSUSE; a successful check does not guarantee that every required package is present. CMake will report any additional missing components during the build.
+
+For explanations and troubleshooting, see [the full installation guide](docs/INSTALLATION.md).
+
 ### Build from source
 
 Once the repository's full source import is complete:

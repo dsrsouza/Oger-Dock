@@ -15,15 +15,16 @@ O desenvolvimento e os testes funcionais principais foram feitos no **openSUSE T
 
 ## 2. Prepare as dependências
 
-As listas abaixo partem dos componentes usados pelo projeto de referência KDE Plasma 6. São **orientações iniciais**, não uma certificação de que cada pacote existe com exatamente o mesmo nome em todas as versões. Verifique as dependências reais da versão publicada com `bash scripts-user/setup.sh --check-deps`. Não substitua pacotes instalados forçadamente para fazer uma dependência funcionar.
+O Oger Dock 1.0.0 exige **CMake 3.22+, C++20, Qt6 6.6+, KF6 6.0+, Plasma 6.0+, PlasmaQuick, Activities, ActivitiesStats, LibKWorkspace, ECM, Gettext, cabeçalhos PipeWire 0.3, pkg-config e `qsb` (Qt Shader Baker)**. As listas foram conferidas no `CMakeLists.txt` e no `src/CMakeLists.txt` do instalador.
 
-### openSUSE Tumbleweed
+**Instale apenas os pacotes da sua distribuição.** Os nomes podem mudar entre versões e as listas não constituem homologação da versão final em todos os sistemas. Não misture repositórios nem force downgrade do Qt/KDE.
+
+### openSUSE Tumbleweed / Leap com Plasma 6 compatível
 
 ```bash
 sudo zypper refresh
 sudo zypper install \
-  git cmake make gcc-c++ binutils gettext-tools pkgconf-pkg-config \
-  kf6-extra-cmake-modules \
+  binutils cmake make gcc-c++ kf6-extra-cmake-modules gettext-tools git pkgconf-pkg-config \
   qt6-base-devel qt6-declarative-devel qt6-shadertools \
   kf6-kconfig-devel kf6-kcoreaddons-devel kf6-kglobalaccel-devel \
   kf6-ki18n-devel kf6-kjobwidgets-devel kf6-kio-devel \
@@ -33,12 +34,13 @@ sudo zypper install \
   pipewire-devel unzip zip
 ```
 
+Se algum pacote não for localizado, consulte `zypper search <nome-do-pacote>`. Na versão atual, `--check-deps` verifica **apenas parte** dos pacotes de desenvolvimento no openSUSE, então use a lista completa acima.
+
 ### Fedora KDE
 
 ```bash
 sudo dnf install \
-  git cmake make gcc-c++ binutils gettext pkgconf-pkg-config \
-  extra-cmake-modules \
+  binutils cmake make gcc-c++ extra-cmake-modules gettext git pkgconf-pkg-config \
   qt6-qtbase-devel qt6-qtdeclarative-devel qt6-qtshadertools \
   kf6-kconfig-devel kf6-kcoreaddons-devel kf6-kglobalaccel-devel \
   kf6-ki18n-devel kf6-kjobwidgets-devel kf6-kio-devel \
@@ -48,13 +50,12 @@ sudo dnf install \
   pipewire-devel unzip zip
 ```
 
-### Debian / Ubuntu com KDE Plasma 6
+### Debian / Ubuntu / Kubuntu / KDE neon com Plasma 6
 
 ```bash
 sudo apt update
 sudo apt install \
-  git build-essential cmake binutils gettext pkg-config \
-  extra-cmake-modules \
+  binutils build-essential cmake extra-cmake-modules gettext git pkg-config \
   qt6-base-dev qt6-base-dev-tools qt6-declarative-dev \
   qt6-declarative-dev-tools qt6-shader-baker \
   libkf6config-dev libkf6coreaddons-dev libkf6globalaccel-dev \
@@ -65,7 +66,31 @@ sudo apt install \
   libpipewire-0.3-dev unzip zip
 ```
 
-**Importante:** distribuições com KDE Plasma 5 ou bibliotecas KDE/Qt insuficientes não ficam compatíveis somente com a instalação desses nomes de pacotes. O resultado final depende das versões efetivamente disponíveis nos repositórios da distribuição.
+É necessário que a versão da distribuição disponibilize Plasma 6 e os arquivos de desenvolvimento compatíveis. Instalar somente esses nomes não transforma um Plasma 5 em ambiente suportado.
+
+### Arch Linux / Manjaro com Plasma 6
+
+```bash
+sudo pacman -Syu --needed \
+  base-devel binutils cmake extra-cmake-modules gettext git pkgconf \
+  qt6-base qt6-declarative qt6-shadertools \
+  kconfig kcoreaddons kglobalaccel ki18n kjobwidgets kio \
+  kpackage kservice kwindowsystem \
+  libplasma plasma-workspace plasma-activities plasma-activities-stats \
+  pipewire unzip zip
+```
+
+Os nomes são os dos repositórios Arch. No Manjaro, a disponibilidade depende do ramo de atualizações e das versões do sistema.
+
+### Verificação de dependências
+
+Depois de extrair o pacote completo, na pasta do projeto:
+
+```bash
+bash scripts-user/setup.sh --check-deps
+```
+
+**Atenção:** essa opção testa somente um **subconjunto** das dependências reais do CMake. Ela pode não identificar tudo o que falta, principalmente no openSUSE. A configuração e a compilação do projeto são a verificação definitiva; uma verificação prévia sem erros não equivale a uma instalação funcional.
 
 ## 3. Baixe, compile e instale
 
