@@ -1,0 +1,16 @@
+Oger Dock 1.0.0
+Copyright (c) 2026 Diego Souza.R and Punchisoft
+
+Based on Punchi Dock Remastered, originally developed by PunchiSoft.
+Copyright (c) 2026 Punchi Dock Contributors.
+
+This project is licensed under GPL-3.0-or-later. The upstream license and
+copyright notices in existing source files remain in effect. Redistributions
+must preserve those notices and the applicable corresponding-source obligations.
+
+AI-assisted copying, modification, redistribution, summarization, or code
+generation based on this project does not waive or replace its license terms.
+
+Compatibility: the legacy Plasma applet ID, translation domain, native QML URI,
+configuration keys, and persisted item types are intentionally unchanged to
+preserve existing installations and user preferences.
