@@ -1,0 +1,74 @@
+[
+  {
+    "id": "ogermenu",
+    "pt": "Menu principal (OgerMenu)",
+    "en": "Main application menu",
+    "ptDesc": "Busca, categorias, grade de aplicativos e ações para a sessão KDE.",
+    "enDesc": "Search, categories, app grid and KDE session actions.",
+    "path": "Images/features/ogermenu.webp",
+    "sha256": "37cc71a192c50cde9d16b14aecf56b1464f568379c75b8230da407aafcf7c358"
+  },
+  {
+    "id": "fan-folders",
+    "pt": "Pastas em leque",
+    "en": "Animated fan folders",
+    "ptDesc": "Atalhos agrupados com abertura animada para acesso rápido.",
+    "enDesc": "Animated collections of related application shortcuts.",
+    "path": "Images/features/fan-folders.webp",
+    "sha256": "0ed5dbca6b8f322a781ca6cb929a248bf31e6c3713510b2bb221b9489648f5d8"
+  },
+  {
+    "id": "dolphin",
+    "pt": "Integração com Dolphin",
+    "en": "Dolphin integration",
+    "ptDesc": "Acesso a pastas e diretórios pelo gerenciador de arquivos KDE.",
+    "enDesc": "Direct access to directories through the KDE file manager.",
+    "path": "Images/features/dolphin.webp",
+    "sha256": "c9d6ff998d950d7b3ad978c27d192e4fa2a6ce6d5848351dcc4e8bf21124012b"
+  },
+  {
+    "id": "native-tray-menu",
+    "pt": "Menu nativo da bandeja",
+    "en": "Native tray menus",
+    "ptDesc": "Acesso aos menus SNI/DBusMenu exportados pelos aplicativos compatíveis.",
+    "enDesc": "Access to SNI/DBusMenu menus exported by compatible applications.",
+    "path": "Images/features/native-tray-menu.webp",
+    "sha256": "a66c687fce73f342c13618a02ce695dd0b8f5794775d0685d6f3eeb96715b575"
+  },
+  {
+    "id": "trash-popup",
+    "pt": "Popup da lixeira",
+    "en": "Trash popup",
+    "ptDesc": "Visualização dos itens, esvaziamento com confirmação e abertura no Dolphin.",
+    "enDesc": "View trash, empty with confirmation or open in Dolphin.",
+    "path": "Images/features/trash-popup.webp",
+    "sha256": "8eb4255f04dfc252aae866c8b4a36544185190ada7adcb0521a08786ca3535f5"
+  },
+  {
+    "id": "mini-player",
+    "pt": "Mini player MPRIS",
+    "en": "MPRIS mini player",
+    "ptDesc": "Capa, informação da faixa e controles de reprodução na dock.",
+    "enDesc": "Artwork, track details and media controls directly in the dock.",
+    "path": "Images/features/mini-player.webp",
+    "sha256": "720c7196fb3aab80d6aff6d8073a596a5b03f0450aa4dbc242b5c5476ea88f0f"
+  },
+  {
+    "id": "context-menu",
+    "pt": "Menu de contexto",
+    "en": "Dock context menu",
+    "ptDesc": "Comandos para destravar, personalizar, adicionar separadores e configurar.",
+    "enDesc": "Unlock, customize, add separators and access widget settings.",
+    "path": "Images/features/context-menu.webp",
+    "sha256": "5d03d5bb59d5135d55b0ad5822caef35e2d08f1cad545364c689c3612fce56bf"
+  },
+  {
+    "id": "settings",
+    "pt": "Painel de configurações",
+    "en": "Settings panel",
+    "ptDesc": "Organização de itens, aparência, pastas, janelas, menus e atalhos.",
+    "enDesc": "Manage items, appearance, folders, windows, menus and shortcuts.",
+    "path": "Images/features/settings.webp",
+    "sha256": "e37c80c9fcec251ba73ec0b104a496bc3860d9cc6610ef5418e1aa2b3da1df1a"
+  }
+]

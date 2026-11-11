@@ -1,0 +1,81 @@
+name: Publish Oger Dock feature gallery
+on:
+  push:
+    branches: [main]
+    paths:
+      - Oger-Dock-Galeria-README-8-Recursos.zip
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify package and prepare README gallery
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib, html, json, re, zipfile
+          from pathlib import Path
+          archive=Path('Oger-Dock-Galeria-README-8-Recursos.zip')
+          assert archive.is_file(), 'Gallery archive not uploaded'
+          features=json.loads(Path('.github/oger-feature-gallery.json').read_text(encoding='utf-8'))
+          expected={feature['path']:feature['sha256'] for feature in features}
+          with zipfile.ZipFile(archive) as z:
+              names=z.namelist()
+              assert set(names)==set(expected) and len(names)==8, 'Unexpected entries in gallery ZIP'
+              for path in names:
+                  data=z.read(path)
+                  assert data.startswith(b'RIFF') and data[8:12]==b'WEBP', 'Unexpected image format'
+                  assert hashlib.sha256(data).hexdigest()==expected[path], 'Image SHA-256 mismatch: '+path
+                  destination=Path(path)
+                  destination.parent.mkdir(parents=True,exist_ok=True)
+                  destination.write_bytes(data)
+          archive.unlink()
+          def gallery(lang):
+              heading='## Galeria' if lang=='pt' else '## Gallery'
+              warning=('> **Demonstrações editadas:** estas imagens foram preparadas a partir de capturas do Oger Dock, com área de trabalho, arquivos e detalhes substituídos por exemplos para proteger a privacidade. Algumas partes foram reconstruídas graficamente e não são evidência de homologação.'
+                       if lang=='pt' else
+                       '> **Edited demonstrations:** these images were prepared from Oger Dock captures with desktop details and filenames replaced to protect privacy. Some graphic elements were reconstructed; these are not compatibility-certification evidence.')
+              cells=[]
+              for feature in features:
+                  title=html.escape(feature[lang])
+                  desc=html.escape(feature['ptDesc' if lang=='pt' else 'enDesc'])
+                  cells.append('<td width="50%" valign="top">'
+                               '<img src="'+feature['path']+'" width="100%" alt="Oger Dock: '+title+' (edited demonstration)">'
+                               '<p><strong>'+title+'</strong></p><p>'+desc+'</p></td>')
+              rows=['<tr>'+cells[i]+cells[i+1]+'</tr>' for i in range(0,len(cells),2)]
+              return heading+'\n\n'+warning+'\n\n<table>\n'+'\n'.join(rows)+'\n</table>\n\n'
+          for path,lang,next_title in (
+              ('README.md','en','Installation'),
+              ('README.pt_BR.md','pt','Instalação')
+          ):
+              p=Path(path)
+              text=p.read_text(encoding='utf-8')
+              pattern=r'## '+('Gallery' if lang=='en' else 'Galeria')+r'\n.*?(?=## '+next_title+r'\n)'
+              updated,count=re.subn(pattern,lambda _:gallery(lang),text,flags=re.S)
+              assert count==1, 'Cannot locate gallery heading: '+path
+              p.write_text(updated,encoding='utf-8')
+          source=Path('docs/SCREENSHOTS.md')
+          text=source.read_text(encoding='utf-8')
+          marker='## Edited demonstrations / Demonstrações editadas'
+          if marker not in text:
+              text += '\n'+marker+'\n\nThe README contains 8 privacy-edited promotional demonstrations, not unaltered application screenshots. The original captures are not published.\n'
+              source.write_text(text,encoding='utf-8')
+          print('All 8 images validated; both READMEs updated.')
+          PY
+      - name: Commit gallery and remove upload ZIP
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'docs: add eight privacy-edited feature demonstrations'
+          git push origin HEAD:main
