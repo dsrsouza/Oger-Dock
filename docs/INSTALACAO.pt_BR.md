@@ -1,6 +1,6 @@
 # Instalando o Oger Dock 1.0.0
 
-Este guia utiliza a compilação **local**, para que os componentes nativos sejam construídos com as bibliotecas Qt/KDE do próprio computador. O código-fonte e o instalador completos precisam estar disponíveis; neste momento, o repositório contém apenas a documentação pública; use o instalador completo da área Releases assim que for disponibilizado.
+Este guia utiliza a compilação **local**, para que os componentes nativos sejam construídos com as bibliotecas Qt/KDE do próprio computador. O código-fonte completo **já está publicado na branch `main`**, e os pacotes do instalador estão disponíveis na área [Releases](https://github.com/dsrsouza/Oger-Dock/releases).
 
 ## 1. Verifique seu ambiente
 
@@ -94,7 +94,7 @@ bash scripts-user/setup.sh --check-deps
 
 ## 3. Baixe, compile e instale
 
-Depois que os arquivos completos estiverem publicados:
+Com o código-fonte completo já publicado:
 
 ```bash
 git clone https://github.com/dsrsouza/Oger-Dock.git

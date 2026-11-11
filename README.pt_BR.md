@@ -14,7 +14,7 @@
 O **Oger Dock** é uma dock fluida e personalizável para o **KDE Plasma 6**, que reúne aplicativos fixados, alternância de janelas, pastas animadas, player multimídia e ferramentas da área de trabalho. A versão **1.0.0** preserva a base funcional R63.7, desenvolvida e testada principalmente no **openSUSE Tumbleweed, KDE Plasma 6.8.2 e Wayland**.
 
 > [!IMPORTANT]
-> O código-fonte completo está em preparação para importação neste repositório. Até a conclusão do processo, o clone contém somente documentação. O instalador ZIP/TAR.GZ que será publicado em [Releases](https://github.com/dsrsouza/Oger-Dock/releases) compila o plasmoide no computador do usuário — não é um binário `.plasmoid` universal.
+> O código-fonte completo do Oger Dock 1.0.0 **já está disponível neste repositório**. Os instaladores ZIP/TAR.GZ estão disponíveis em [Releases](https://github.com/dsrsouza/Oger-Dock/releases). Esses pacotes compilam localmente; não são binários `.plasmoid` universais.
 
 [Recursos](#recursos) · [Galeria](#galeria) · [Instalação](#instalação) · [Compatibilidade](#compatibilidade) · [Testes](#testes-e-qualidade) · [Comunidade](#comunidade-e-suporte) · [Licença](#licença)
 
@@ -143,7 +143,7 @@ Veja as explicações e soluções no [guia completo de instalação](docs/INSTA
 
 ### Compilar pelo código-fonte
 
-Assim que a importação do código-fonte estiver concluída:
+Para baixar e compilar o código-fonte completo:
 
 ```bash
 git clone https://github.com/dsrsouza/Oger-Dock.git

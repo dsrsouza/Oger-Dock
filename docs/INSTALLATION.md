@@ -1,6 +1,6 @@
 # Installing Oger Dock 1.0.0
 
-For a **native build**, obtain the complete release source (not only the public introductory README). Build on the same KDE Plasma 6 installation on which the applet will run, so its native modules match the system Qt/KDE libraries.
+The **complete 1.0.0 source tree is published on the `main` branch**. Release installer archives are also available under [Releases](https://github.com/dsrsouza/Oger-Dock/releases). Build on the same KDE Plasma 6 installation on which the applet will run, so its native modules match the system Qt/KDE libraries.
 
 The main functional development environment is **openSUSE Tumbleweed with Plasma 6.8.2 and Wayland**. Fedora and Debian/Ubuntu are intended targets, not yet fully certified.
 

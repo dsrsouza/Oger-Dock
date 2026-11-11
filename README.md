@@ -14,7 +14,7 @@
 **Oger Dock** brings a smooth, configurable application dock to **KDE Plasma 6**. It combines shortcuts, window switching, interactive folders, a compact media player and desktop utilities in a cohesive experience. Designed and tested primarily with **openSUSE Tumbleweed, KDE Plasma 6.8.2 and Wayland**, version **1.0.0** continues the R63.7 functional baseline.
 
 > [!IMPORTANT]
-> The project source is being prepared for import into this repository. Until the import workflow completes, the clone contains documentation only. A source-based ZIP/TAR.GZ installer (not a universal precompiled `.plasmoid`) will be available under [Releases](https://github.com/dsrsouza/Oger-Dock/releases).
+> The complete Oger Dock 1.0.0 source is now available in this repository. ZIP/TAR.GZ source installers are available under [Releases](https://github.com/dsrsouza/Oger-Dock/releases). These packages compile locally; they are not universal prebuilt `.plasmoid` binaries.
 
 [Features](#features) · [Gallery](#gallery) · [Installation](#installation) · [Compatibility](#compatibility) · [Testing](#testing-and-quality) · [Community](#community-and-support) · [License](#license)
 
@@ -143,7 +143,7 @@ For explanations and troubleshooting, see [the full installation guide](docs/INS
 
 ### Build from source
 
-Once the repository's full source import is complete:
+Clone the complete source tree:
 
 ```bash
 git clone https://github.com/dsrsouza/Oger-Dock.git
