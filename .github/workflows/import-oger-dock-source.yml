@@ -1,0 +1,80 @@
+name: Import Oger Dock 1.0.0 source installer
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - Oger-Dock-1.0.0-Instalador-Publicacao.zip
+
+permissions:
+  contents: write
+
+jobs:
+  import-source:
+    name: Verify archive and publish source tree
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Validate and unpack approved 1.0.0 source archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          archive=Oger-Dock-1.0.0-Instalador-Publicacao.zip
+          expected=553b6561ffb3e8dec06b98fa415371e550b2a7c7236c8717fcad3be5e2383a96
+          printf '%s  %s\n' "$expected" "$archive" | sha256sum --check -
+          mkdir -p "$RUNNER_TEMP/oger-source"
+          unzip -q "$archive" -d "$RUNNER_TEMP/oger-source"
+          source_dir="$RUNNER_TEMP/oger-source/Oger-Dock-1.0.0-Instalador"
+          test -f "$source_dir/CMakeLists.txt"
+          test -f "$source_dir/scripts-user/setup.sh"
+          test -f "$source_dir/NOTICE"
+          test -f "$source_dir/LICENSE"
+          # Preserve the richer bilingual project pages already committed to GitHub.
+          rsync -a \
+            --exclude='/.git/' \
+            --exclude='/.github/' \
+            --exclude='/README.md' \
+            --exclude='/README.pt_BR.md' \
+            --exclude='/NOTICE' \
+            --exclude='/LICENSE' \
+            --exclude='/docs/INSTALLATION.md' \
+            --exclude='/docs/INSTALACAO.pt_BR.md' \
+            --exclude='/docs/SCREENSHOTS.md' \
+            --exclude='/docs/RELEASE-1.0.0.md' \
+            --exclude='/CONTRIBUTING.md' \
+            "$source_dir/" ./
+          rm -- "$archive"
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('README.md')
+          s = p.read_text(encoding='utf-8')
+          s = s.replace(
+              'This repository currently contains the public documentation. The complete source installer will be published under [Releases](https://github.com/dsrsouza/Oger-Dock/releases); until then, the checkout alone cannot be compiled.',
+              'The source tree is available in this repository. Source installer archives are also distributed through [Releases](https://github.com/dsrsouza/Oger-Dock/releases); they compile a native Plasma applet on your system, not a universal prebuilt binary.'
+          )
+          p.write_text(s, encoding='utf-8')
+          p = Path('README.pt_BR.md')
+          s = p.read_text(encoding='utf-8')
+          s = s.replace(
+              'Este repositório contém a documentação pública. O instalador com o código-fonte completo será publicado em [Releases](https://github.com/dsrsouza/Oger-Dock/releases). Até lá, o repositório por si só ainda não pode ser compilado.',
+              'O código-fonte completo está disponível neste repositório. Os instaladores em código-fonte também serão distribuídos em [Releases](https://github.com/dsrsouza/Oger-Dock/releases); eles compilam o plasmoide nativo localmente, não fornecem um binário universal.'
+          )
+          p.write_text(s, encoding='utf-8')
+          PY
+      - name: Commit verified source and remove ZIP from Code
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo 'No changes to publish.'
+            exit 0
+          fi
+          git commit -m "release: import verified Oger Dock 1.0.0 source tree"
+          git push origin HEAD:main
