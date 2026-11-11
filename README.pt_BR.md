@@ -54,7 +54,22 @@ A integração depende das informações efetivamente fornecidas pelo aplicativo
 
 ## Galeria
 
-A galeria será preenchida com capturas reais da dock inferior e lateral, menus Normal/Reduzido, pastas, player e configurações. O [guia de capturas](docs/SCREENSHOTS.md) especifica os arquivos esperados. Não utilizaremos imagens de outros projetos como se fossem do Oger Dock.
+### Demonstrações dos recursos
+
+As oito imagens de apresentação já foram preparadas com uma área de trabalho fictícia e nomes de arquivos genéricos. Elas serão exibidas automaticamente aqui após a importação do ZIP verificado. As capturas originais que mostravam arquivos pessoais **não serão publicadas**.
+
+| Recurso | O que a demonstração apresenta |
+|---|---|
+| **OgerMenu** | Busca de aplicativos, categorias, grade de ícones e ações de sessão do KDE |
+| **Pastas em leque** | Grupos de atalhos abertos com animação em leque |
+| **Integração com Dolphin** | Abertura de diretórios pelo gerenciador de arquivos do KDE |
+| **Menus nativos da bandeja** | Ações SNI/DBusMenu oferecidas por aplicativos compatíveis |
+| **Popup da lixeira** | Lista de arquivos, esvaziamento com confirmação e abertura no Dolphin |
+| **Mini player integrado** | Controles MPRIS, capa e informações da música |
+| **Menu de contexto da dock** | Destravar, inserir separadores, tema e configurações |
+| **Painel de configurações** | Organizar ícones, pastas, menus, áudio, janelas e atalhos |
+
+[Como publicar a galeria](docs/GALERIA-IMPORTACAO.pt_BR.md) · [Orientações para capturas](docs/SCREENSHOTS.md)
 
 ## Instalação
 

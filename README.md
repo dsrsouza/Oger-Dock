@@ -54,7 +54,22 @@ Tray behavior depends on the application's exported SNI and the windows recogniz
 
 ## Gallery
 
-Real screenshots are reserved for this gallery for the bottom and side dock, the Normal/Reduced menus, fan folders, player and settings. The [screenshot guide](docs/SCREENSHOTS.md) documents the expected images; no images from another dock are presented as Oger Dock captures.
+### Feature demonstrations
+
+The following eight features have privacy-edited presentation images prepared. The images will appear here automatically once the verified gallery archive is imported. The originals containing personal desktop data are not published.
+
+| Feature | What it demonstrates |
+|---|---|
+| **OgerMenu** | Application search, categories, app grid, and KDE session actions |
+| **Animated fan folders** | Organized collections of shortcuts opening in a fan |
+| **Dolphin integration** | Open folders from the dock in KDE's file manager |
+| **Native tray menus** | Access SNI/DBusMenu actions exported by compatible applications |
+| **Trash popup** | Review deleted items, empty with confirmation, or open in Dolphin |
+| **Mini player** | MPRIS playback controls, album cover, and track information |
+| **Dock context menu** | Unlocking, separators, appearance, and configuration |
+| **Settings panel** | Managing icons, folders, menus, audio, windows, and shortcuts |
+
+[Gallery publication instructions](docs/GALERIA-IMPORTACAO.pt_BR.md) · [Screenshot guidelines](docs/SCREENSHOTS.md)
 
 ## Installation
 
